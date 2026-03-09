@@ -69,6 +69,7 @@
     SAPServiceLayer.init();
     AttachmentManager.init();
     PipelineController.init();
+    if (typeof DashboardSync !== 'undefined') DashboardSync.init();
 
     // ══════════════════════════════════════
     // 7. PHASE 4 — PRODUCTION & HYPERCARE

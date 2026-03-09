@@ -147,11 +147,12 @@
                 <div class="glass-card" data-domain="HEALTHCARE">
                     <div class="card-header">
                         <h3 class="card-title" data-i18n="docQueueTitle">📄 Document Queue</h3>
-                        <span class="card-badge ai" data-i18n="badgeAI">AI Ready</span>
+                        <span class="card-badge ai" id="dqBadge" data-i18n="badgeAI">AI Ready</span>
                     </div>
-                    <div class="card-metric"><span class="currency" data-currency-symbol>SAR</span> <span
+                    <div class="card-metric" id="dqMetric"><span class="currency" data-currency-symbol>SAR</span> <span
                             data-i18n-currency="0">0.00</span></div>
-                    <p class="card-description" data-i18n="docQueueDesc">Pending invoices, purchase orders, and delivery
+                    <p class="card-description" id="dqDesc" data-i18n="docQueueDesc">Pending invoices, purchase orders,
+                        and delivery
                         notes awaiting AI extraction and SAP posting.</p>
                 </div>
 
@@ -159,23 +160,25 @@
                 <div class="glass-card" data-domain="HEALTHCARE">
                     <div class="card-header">
                         <h3 class="card-title" data-i18n="aiProcessTitle">🤖 AI Processing</h3>
-                        <span class="card-badge pending" data-i18n="badgeStandby">Standby</span>
+                        <span class="card-badge pending" id="aiBadge" data-i18n="badgeStandby">Standby</span>
                     </div>
                     <ul class="activity-list">
                         <li class="activity-item">
-                            <span class="activity-dot info"></span>
-                            <span class="activity-text" data-i18n="aiItem1">OCR Engine — Idle</span>
-                            <span class="activity-time" data-i18n="aiTime1">—</span>
+                            <span class="activity-dot info" id="aiOcrDot"></span>
+                            <span class="activity-text" id="aiOcrText" data-i18n="aiItem1">OCR Engine — Idle</span>
+                            <span class="activity-time" id="aiOcrTime" data-i18n="aiTime1">—</span>
                         </li>
                         <li class="activity-item">
-                            <span class="activity-dot info"></span>
-                            <span class="activity-text" data-i18n="aiItem2">NLP Classifier — Standby</span>
-                            <span class="activity-time" data-i18n="aiTime2">—</span>
+                            <span class="activity-dot info" id="aiNlpDot"></span>
+                            <span class="activity-text" id="aiNlpText" data-i18n="aiItem2">NLP Classifier —
+                                Standby</span>
+                            <span class="activity-time" id="aiNlpTime" data-i18n="aiTime2">—</span>
                         </li>
                         <li class="activity-item">
-                            <span class="activity-dot info"></span>
-                            <span class="activity-text" data-i18n="aiItem3">Field Extraction — Awaiting</span>
-                            <span class="activity-time" data-i18n="aiTime3">—</span>
+                            <span class="activity-dot info" id="aiExtDot"></span>
+                            <span class="activity-text" id="aiExtText" data-i18n="aiItem3">Field Extraction —
+                                Awaiting</span>
+                            <span class="activity-time" id="aiExtTime" data-i18n="aiTime3">—</span>
                         </li>
                     </ul>
                 </div>
@@ -195,14 +198,14 @@
                                 configured</span>
                         </li>
                         <li class="activity-item">
-                            <span class="activity-dot warning"></span>
+                            <span class="activity-dot warning" id="sapDiDot"></span>
                             <span class="activity-text" data-i18n="sapItem2">DI API Adapter</span>
-                            <span class="activity-time" data-i18n="sapStatus2">Pending setup</span>
+                            <span class="activity-time" id="sapDiStatus" data-i18n="sapStatus2">Pending setup</span>
                         </li>
                         <li class="activity-item">
-                            <span class="activity-dot warning"></span>
+                            <span class="activity-dot warning" id="sapPostDot"></span>
                             <span class="activity-text" data-i18n="sapItem3">Document Posting</span>
-                            <span class="activity-time" data-i18n="sapStatus3">Inactive</span>
+                            <span class="activity-time" id="sapPostStatus" data-i18n="sapStatus3">Inactive</span>
                         </li>
                     </ul>
                 </div>
@@ -477,6 +480,7 @@
     <script src="js/ValidationAgents.js"></script>
     <script src="js/SAPServiceLayer.js"></script>
     <script src="js/AttachmentManager.js"></script>
+    <script src="js/DashboardSync.js"></script>
     <script src="js/PipelineController.js"></script>
     <script src="js/HypercareMonitor.js"></script>
     <script src="js/UATConsole.js"></script>

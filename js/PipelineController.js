@@ -281,6 +281,9 @@ const PipelineController = (() => {
                 _updateProcessBtn(`⏳ ${info.message}`, true);
             });
 
+            // Dashboard: OCR starting
+            if (typeof DashboardSync !== 'undefined') DashboardSync.onOCRStart();
+
             const ocrResult = await ExtractionEngine.extractText(currentFile);
             ocrText = ocrResult.text;
             ocrConfidence = ocrResult.confidence;
@@ -298,12 +301,18 @@ const PipelineController = (() => {
                 UATConsole.logOCR(ocrResult);
             }
 
+            // Dashboard: OCR complete
+            if (typeof DashboardSync !== 'undefined') DashboardSync.onOCRComplete(ocrResult);
+
             _setProgressBar(35);
 
             // ══════════════════════════════════
             // STAGE 2: AGENTIC CLASSIFICATION
             // ══════════════════════════════════
             _updateProcessBtn('⏳ Classifying...', true);
+
+            // Dashboard: Classify starting
+            if (typeof DashboardSync !== 'undefined') DashboardSync.onClassifyStart();
 
             const classification = DocumentClassifier.classify(ocrText);
 
@@ -322,6 +331,9 @@ const PipelineController = (() => {
                 UATConsole.logClassification(classification);
             }
 
+            // Dashboard: Classify complete
+            if (typeof DashboardSync !== 'undefined') DashboardSync.onClassifyComplete(classification);
+
             // ── Low confidence → Amber review card ──
             if (classification.isLowConfidence) {
                 _updatePipelineStep(1, 'error');
@@ -338,6 +350,9 @@ const PipelineController = (() => {
             _updatePipelineStep(2, 'active');
             _setProgressBar(60);
             _updateProcessBtn('⏳ Extracting fields...', true);
+
+            // Dashboard: Extraction starting
+            if (typeof DashboardSync !== 'undefined') DashboardSync.onExtractStart();
 
             const extraction = FieldExtractor.extract(ocrText, classification.docType);
 
@@ -373,6 +388,9 @@ const PipelineController = (() => {
             if (typeof UATConsole !== 'undefined') {
                 UATConsole.logExtraction(extractedData);
             }
+
+            // Dashboard: Extraction complete
+            if (typeof DashboardSync !== 'undefined') DashboardSync.onExtractComplete(extractedData);
 
             _showExtractionPreview(extractedData);
             _updatePipelineStep(2, 'complete');
@@ -939,6 +957,9 @@ const PipelineController = (() => {
         els.sapPostBtn.disabled = true;
         els.sapPostBtn.textContent = '⏳ Posting to SAP B1...';
 
+        // Dashboard: SAP post starting
+        if (typeof DashboardSync !== 'undefined') DashboardSync.onSAPPostStart();
+
         try {
             // ══ Step 1: Post Draft via SAPServiceLayer ══
             const draftResult = await SAPServiceLayer.postDraft(extractedData, currentFile?.name || 'document');
@@ -990,10 +1011,16 @@ const PipelineController = (() => {
             els.sapReadyPanel?.classList.remove('visible');
             _showSuccessCard(draftResult, attachResult);
 
+            // Dashboard: SAP post success
+            if (typeof DashboardSync !== 'undefined') DashboardSync.onSAPPostSuccess(draftResult, extractedData);
+
         } catch (err) {
             console.error('[PipelineController] SAP posting error:', err);
             els.sapPostBtn.textContent = '❌ Post Failed';
             els.sapPostBtn.style.background = 'linear-gradient(135deg, #DC2626, #EF4444)';
+
+            // Dashboard: SAP post error
+            if (typeof DashboardSync !== 'undefined') DashboardSync.onSAPPostError(err);
 
             await AuditChain.record('SAP_DRAFT_ERROR', {
                 error: err.message

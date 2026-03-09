@@ -368,6 +368,25 @@ body {
     border: 1px solid rgba(7, 66, 125, 0.2);
 }
 
+.card-badge.processing {
+    background: rgba(59, 130, 246, 0.12);
+    color: #3B82F6;
+    border: 1px solid rgba(59, 130, 246, 0.25);
+    animation: badgePulse 1.5s ease-in-out infinite;
+}
+
+@keyframes badgePulse {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.6;
+    }
+}
+
 /* ── Card Body Content ── */
 .card-metric {
     font-size: 2.2rem;
@@ -442,6 +461,17 @@ body {
 
 .activity-dot.info {
     background: var(--health-info);
+}
+
+.activity-dot.processing {
+    background: #3B82F6;
+    animation: sapPulse 1.5s ease-in-out infinite;
+    box-shadow: 0 0 8px rgba(59, 130, 246, 0.4);
+}
+
+.activity-dot.error {
+    background: var(--health-critical);
+    box-shadow: 0 0 8px rgba(239, 68, 68, 0.4);
 }
 
 .activity-text {
