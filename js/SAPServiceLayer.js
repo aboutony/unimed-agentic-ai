@@ -10,6 +10,7 @@ const SAPServiceLayer = (() => {
     let _config = null;
     let _sessionId = null;
     let _connected = false;
+    let _environment = 'SANDBOX';
 
     // SAP Draft endpoint mapping
     const DRAFT_ENDPOINTS = {
@@ -251,6 +252,11 @@ const SAPServiceLayer = (() => {
     function getSessionId() { return _sessionId; }
 
     function init() {
+        // Detect environment
+        if (typeof ValidationAgents !== 'undefined') {
+            _environment = ValidationAgents.getEnvironment() || 'SANDBOX';
+        }
+
         // Try to restore config from SAPHandshake if available
         if (typeof SAPHandshake !== 'undefined') {
             const cfg = SAPHandshake.getConfig?.();
@@ -263,7 +269,7 @@ const SAPServiceLayer = (() => {
                 };
             }
         }
-        console.log('[SAPServiceLayer] ✅ Initialized — Drafts API ready');
+        console.log(`[SAPServiceLayer] ✅ Initialized — Environment: ${_environment} | Drafts API ready`);
     }
 
     return {
@@ -275,6 +281,7 @@ const SAPServiceLayer = (() => {
         postDraft,
         buildPayload,
         isConnected,
-        getSessionId
+        getSessionId,
+        getEnvironment: () => _environment
     };
 })();

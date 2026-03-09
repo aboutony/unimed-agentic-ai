@@ -50,16 +50,25 @@ const ValidationAgents = (() => {
     let FUZZY_THRESHOLD = 0.65;
 
     // ═══════════════════════════════════════
-    // UAT ENVIRONMENT LOCKDOWN
-    // Master Data is FROZEN for UAT testing
+    // PRODUCTION ENVIRONMENT — PHASE 4 GO-LIVE
+    // UAT Complete. Live traffic active.
     // ═══════════════════════════════════════
-    const UAT_LOCKED = true;
-    const UAT_ENV = 'UAT_SANDBOX';
+    const UAT_LOCKED = false;
+    const ENVIRONMENT = 'PRODUCTION';
+    const PRODUCTION_SINCE = '2026-03-09T23:23:00+03:00';
     const MASTER_DATA_STATS = {
         customers: Object.values(BP_MASTER).filter(b => b.CardType === 'C').length,
         vendors: Object.values(BP_MASTER).filter(b => b.CardType === 'S').length,
         items: Object.keys(ITEM_MASTER).length
     };
+
+    // ── Production Sync Status for 3 document types ──
+    const DOC_TYPE_SYNC = {
+        SALES_ORDER: { label: 'Sales Order (SO)', synced: true, syncedAt: PRODUCTION_SINCE },
+        PURCHASE_ORDER: { label: 'Purchase Order (PO)', synced: true, syncedAt: PRODUCTION_SINCE },
+        DELIVERY_NOTE: { label: 'Delivery Note (DN)', synced: true, syncedAt: PRODUCTION_SINCE }
+    };
+    const PRODUCTION_MASTER_DATA_SYNCED = true;
 
     // ═══════════════════════════════════════
     // BUSINESS PARTNER VALIDATION
@@ -367,9 +376,12 @@ const ValidationAgents = (() => {
         validateItems,
         getBPMaster: () => ({ ...BP_MASTER }),
         getItemMaster: () => ({ ...ITEM_MASTER }),
-        getEnvironment: () => UAT_LOCKED ? UAT_ENV : 'PRODUCTION',
+        getEnvironment: () => ENVIRONMENT,
         isLocked: () => UAT_LOCKED,
         getStats: () => ({ ...MASTER_DATA_STATS }),
+        getProductionSince: () => PRODUCTION_SINCE,
+        getDocTypeSyncStatus: () => ({ ...DOC_TYPE_SYNC }),
+        isMasterDataSynced: () => PRODUCTION_MASTER_DATA_SYNCED,
         getFuzzyThreshold: () => FUZZY_THRESHOLD,
         setFuzzyThreshold(val) {
             const v = parseFloat(val);

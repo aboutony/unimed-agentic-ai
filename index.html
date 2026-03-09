@@ -69,6 +69,13 @@
                     <span class="sap-dot idle" id="sapDotTopbar"></span>
                 </button>
 
+                <!-- Hypercare Monitor (Founder Only) -->
+                <button class="topbar-btn hypercare-btn" id="hypercareBtn" aria-label="Hypercare Monitor"
+                    title="Hypercare Monitor" style="display:none;">
+                    📊
+                    <span class="hypercare-dot" id="hypercareDot"></span>
+                </button>
+
                 <!-- Logout -->
                 <button class="topbar-btn topbar-btn-logout" id="logoutBtn" aria-label="Logout" title="Logout">
                     🚪
@@ -76,13 +83,51 @@
             </div>
         </header>
 
-        <!-- UAT Environment Lockdown Banner -->
-        <div class="uat-lockdown-banner" id="uatLockdownBanner" style="display:none;">
-            <span class="uat-lockdown-icon">🔒</span>
-            <span class="uat-lockdown-text">UAT SANDBOX — Master Data Frozen</span>
-            <span class="uat-lockdown-scope" id="uatLockdownScope">6 Customers · 5 Vendors · 10 Items</span>
-            <span class="uat-lockdown-threshold" id="uatLockdownThreshold">Fuzzy: 0.65</span>
+        <!-- Production Status Banner -->
+        <div class="production-banner" id="productionBanner" style="display:none;">
+            <span class="production-banner-icon">✅</span>
+            <span class="production-banner-text">PRODUCTION — Live Environment</span>
+            <span class="production-banner-scope" id="productionBannerScope">SO · PO · DN Synced</span>
+            <span class="production-banner-date" id="productionBannerDate">Go-Live: 2026-03-09</span>
         </div>
+
+        <!-- Hypercare Panel (Founder Only) -->
+        <aside class="hypercare-panel" id="hypercarePanel">
+            <div class="hypercare-panel-header">
+                <h2 class="hypercare-panel-title">📊 Hypercare Monitor</h2>
+                <span class="hypercare-day-badge" id="hypercareDayBadge">Day 1 of 30</span>
+                <button class="hypercare-close" id="hypercareClose" aria-label="Close hypercare">✕</button>
+            </div>
+            <div class="hypercare-panel-body">
+                <!-- Summary Cards -->
+                <div class="hypercare-summary" id="hypercareSummary">
+                    <div class="hypercare-stat">
+                        <span class="hypercare-stat-value" id="hcDocsProcessed">0</span>
+                        <span class="hypercare-stat-label">Docs Processed</span>
+                    </div>
+                    <div class="hypercare-stat">
+                        <span class="hypercare-stat-value" id="hcErrors">0</span>
+                        <span class="hypercare-stat-label">Errors</span>
+                    </div>
+                    <div class="hypercare-stat">
+                        <span class="hypercare-stat-value" id="hcOverrides">0</span>
+                        <span class="hypercare-stat-label">Overrides</span>
+                    </div>
+                    <div class="hypercare-stat">
+                        <span class="hypercare-stat-value" id="hcLowConfidence">0</span>
+                        <span class="hypercare-stat-label">Low Confidence</span>
+                    </div>
+                </div>
+
+                <!-- Event Log -->
+                <div class="hypercare-log-header">
+                    <span>Event Log</span>
+                    <button class="hypercare-export-btn" id="hypercareExportBtn">📥 Export Report</button>
+                </div>
+                <div class="hypercare-log" id="hypercareLog"></div>
+            </div>
+        </aside>
+        <div class="hypercare-overlay" id="hypercareOverlay"></div>
 
         <!-- ═══════ MAIN CONTENT ═══════ -->
         <main class="main-content" data-domain="HEALTHCARE">
@@ -433,6 +478,7 @@
     <script src="js/SAPServiceLayer.js"></script>
     <script src="js/AttachmentManager.js"></script>
     <script src="js/PipelineController.js"></script>
+    <script src="js/HypercareMonitor.js"></script>
     <script src="js/UATConsole.js"></script>
     <script src="js/FounderDemo.js"></script>
     <script src="js/App.js"></script>

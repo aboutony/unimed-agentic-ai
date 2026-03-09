@@ -71,23 +71,48 @@
     PipelineController.init();
 
     // ══════════════════════════════════════
-    // 7. PHASE 3 — UAT & DEMO
+    // 7. PHASE 4 — PRODUCTION & HYPERCARE
     // ══════════════════════════════════════
     UATConsole.init();
     FounderDemo.init();
 
-    // ── UAT Lockdown Banner ──
-    if (ValidationAgents.isLocked && ValidationAgents.isLocked()) {
-        const banner = document.getElementById('uatLockdownBanner');
+    // ── Production Banner ──
+    const env = ValidationAgents.getEnvironment();
+    if (env === 'PRODUCTION') {
+        const banner = document.getElementById('productionBanner');
         if (banner) {
             banner.style.display = '';
-            const stats = ValidationAgents.getStats();
-            const scope = document.getElementById('uatLockdownScope');
-            if (scope) scope.textContent = `${stats.customers} Customers · ${stats.vendors} Vendors · ${stats.items} Items`;
-            const thresh = document.getElementById('uatLockdownThreshold');
-            if (thresh) thresh.textContent = `Fuzzy: ${ValidationAgents.getFuzzyThreshold()}`;
+            const syncStatus = ValidationAgents.getDocTypeSyncStatus();
+            const scopeEl = document.getElementById('productionBannerScope');
+            if (scopeEl) {
+                const syncedTypes = Object.values(syncStatus).filter(s => s.synced).map(s => s.label.split('(')[1]?.replace(')', '') || s.label);
+                scopeEl.textContent = syncedTypes.join(' · ') + ' Synced';
+            }
+            const dateEl = document.getElementById('productionBannerDate');
+            if (dateEl) {
+                const goLive = new Date(ValidationAgents.getProductionSince());
+                dateEl.textContent = `Go-Live: ${goLive.toLocaleDateString('en-CA')}`;
+            }
         }
     }
+
+    // ── Hypercare Monitor (Founder Only) ──
+    if (typeof HypercareMonitor !== 'undefined') {
+        HypercareMonitor.init();
+
+        if (isFounder) {
+            // Show hypercare button in topbar
+            const hcBtn = document.getElementById('hypercareBtn');
+            if (hcBtn) hcBtn.style.display = '';
+
+            // Toggle hypercare panel
+            hcBtn?.addEventListener('click', () => HypercareMonitor.toggle());
+            document.getElementById('hypercareClose')?.addEventListener('click', () => HypercareMonitor.hide());
+            document.getElementById('hypercareOverlay')?.addEventListener('click', () => HypercareMonitor.hide());
+            document.getElementById('hypercareExportBtn')?.addEventListener('click', () => HypercareMonitor.exportReport());
+        }
+    }
+
     // Settings panel open/close
     const settingsGear = document.getElementById('settingsGear');
     const settingsPanel = document.getElementById('settingsPanel');
@@ -112,7 +137,10 @@
 
     // Keyboard: Escape to close
     document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') closeSettings();
+        if (e.key === 'Escape') {
+            closeSettings();
+            if (typeof HypercareMonitor !== 'undefined') HypercareMonitor.hide();
+        }
     });
 
     // Test Connection button
@@ -126,7 +154,7 @@
     }
 
     // ══════════════════════════════════════
-    // 6. LOGOUT
+    // 8. LOGOUT
     // ══════════════════════════════════════
     const logoutBtn = document.getElementById('logoutBtn');
     if (logoutBtn) {
@@ -136,15 +164,16 @@
     }
 
     // ══════════════════════════════════════
-    // 7. BOOT COMPLETE
+    // 9. BOOT COMPLETE
     // ══════════════════════════════════════
     console.log('[App] ════════════════════════════════════');
-    console.log('[App] UNIMED Agentic AI — Phase 3 UAT Online');
+    console.log('[App] UNIMED Agentic AI — Phase 4 PRODUCTION');
     console.log(`[App] Domain: ${DomainLock.getDomain()}`);
     console.log(`[App] Theme: ${ThemeEngine.current()}`);
     console.log(`[App] Language: ${TranslationModule.current()}`);
     console.log(`[App] Founder: ${isFounder}`);
     console.log(`[App] Environment: ${ValidationAgents.getEnvironment()}`);
+    console.log(`[App] Go-Live: ${ValidationAgents.getProductionSince()}`);
     console.log('[App] ════════════════════════════════════');
 
 })();
