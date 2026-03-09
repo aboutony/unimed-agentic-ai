@@ -123,10 +123,16 @@ const FieldExtractor = (() => {
             return null;
         };
         h.poNumber = kv([/NUPCO\s*PO[^0-9]*(\d{8,13})/i, /(?:PO\s*(?:No|Number|#))[^0-9]*(\d{8,13})/i, /\b(4\d{9})\b/]);
-        // PO Number fallback: if captured number starts unexpectedly, try to find 10-digit PO in full text
+        // PO Number fallback: OCR may read '4100000309' as '+100000309' (4→+)
         if (!h.poNumber || h.poNumber.length < 10) {
             const fullMatch = text.match(/\b(4[1-6]\d{8})\b/);
-            if (fullMatch) h.poNumber = fullMatch[1];
+            if (fullMatch) {
+                h.poNumber = fullMatch[1];
+            } else if (h.poNumber && h.poNumber.length === 9 && /^[01]/.test(h.poNumber)) {
+                // OCR dropped leading '4' — prepend it
+                h.poNumber = '4' + h.poNumber;
+                console.log(`[FieldExtractor] NUPCO PO# prefix fix: prepended 4 → ${h.poNumber}`);
+            }
         }
         // DEBUG: show what's near NUPCO PO
         const poIdx = text.search(/NUPCO\s*PO/i);
@@ -138,8 +144,8 @@ const FieldExtractor = (() => {
         // PO Value: OCR may produce double-decimal (1,053,000.00 → 1050.00.00) or no decimal (7,312.50 → 731250)
         h.poValue = kv([
             /PO\s*Value[\s\S]{0,150}?(\d{1,3}(?:,\d{3})*\.\d{2})\s*SAR/i,
-            /PO\s*Value[\s\S]{0,150}?(\d[\d.,]+)\s*SAR/i,
-            /PO\s*Value[\s\S]{0,50}?(\d[\d,]+)\s*SAR/i,
+            /PO\s*Value[\s\S]{0,150}?(\d{3}[\d.,]+)\s*SAR/i,
+            /PO\s*Value[\s\S]{0,50}?(\d{3}[\d,]+)\s*SAR/i,
         ]);
         // Clean PO value: handle double-decimal OCR artifacts (1050.00.00 → 1050.0000 → 105000.00)
         if (h.poValue) {
@@ -209,17 +215,16 @@ const FieldExtractor = (() => {
 
             // Strategy: find "No of Items" then scan for the first standalone digit
             // but STOP before "Supplier" or "Incoterms" (next section)
-            const itemSection = text.match(/No\s*of\s*Items[\s\S]{0,80}?(?=Incoterms|Supplier|Contract|$)/i);
+            const itemSection = text.match(/No\s*of\s*Items[\s\S]{0,100}?(?=Incoterms|Supplier|Contract|$)/i);
             if (itemSection) {
                 // Find ALL numbers in this section
                 const nums = itemSection[0].match(/\b(\d+)\b/g);
                 if (nums) {
-                    // The FIRST number in the section that could be an item count
+                    // Take the MAX number (item count >= SKU count, avoids OCR ordering issues)
                     for (const n of nums) {
                         const val = parseInt(n);
-                        if (val > 0 && val <= 100) {
+                        if (val > 0 && val <= 100 && val > expectedCount) {
                             expectedCount = val;
-                            break;
                         }
                     }
                 }
