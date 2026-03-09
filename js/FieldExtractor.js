@@ -134,8 +134,20 @@ const FieldExtractor = (() => {
             /قيمة\s*أمر\s*الشراء[\s\S]{0,80}?(\d{1,3}(?:,\d{3})*\.\d{2})/i,
             /PO\s*Value[\s\S]{0,120}?SAR\s*(\d{1,3}(?:,\d{3})*\.\d{2})/i,
             /PO\s*Value[\s\S]{0,120}?(\d[\d,]*\.\d{2})\s*SAR/i,
+            /PO\s*Value[\s\S]{0,120}?(\d[\d,]*\.\d{2})/i,
             /(\d{1,3}(?:,\d{3})*\.\d{2})\s*SAR/i,
         ]);
+        // DIAGNOSTIC: dump OCR text near "PO Value" to console
+        const pvIdx = text.search(/PO\s*Value/i);
+        if (pvIdx >= 0) {
+            const snippet = text.substring(pvIdx, pvIdx + 300).replace(/\n/g, '↵');
+            console.log(`[FieldExtractor] DEBUG PO Value area: "${snippet}"`);
+        } else {
+            console.log(`[FieldExtractor] DEBUG: "PO Value" NOT FOUND in OCR text`);
+            // Try to find any SAR amount
+            const sarMatch = text.match(/(\d[\d,.]+)\s*SAR/g);
+            console.log(`[FieldExtractor] DEBUG SAR amounts found: ${JSON.stringify(sarMatch)}`);
+        }
         console.log(`[FieldExtractor] NUPCO headers: PO=${h.poNumber}, Date=${h.date}, Supplier=${h.supplierNumber}, Value=${h.poValue}`);
         h.supplierName = kv([/Company\s*\n?\s*([A-Z][A-Z\s&.,]+(?:CO\.?\s*LTD\.?|LLC|INC)\.?)/im, /Supplier\s*Name[^A-Z]*([A-Z][A-Z\s&.,'-]{5,80})/im]);
         if (!h.supplierName) { const m = text.match(/UNITED\s*MEDICAL\s*INDUSTRIES?\s*CO\.?\s*LTD\.?/i); if (m) h.supplierName = m[0].trim(); }
