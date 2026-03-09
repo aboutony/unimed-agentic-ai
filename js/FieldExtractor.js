@@ -127,8 +127,21 @@ const FieldExtractor = (() => {
         h.supplierNumber = kv([/Supplier\s*Number[^0-9]*(\d{4,8})/i, /رقم\s*المورد[^0-9]*(\d{4,8})/i]);
         h.supplierVAT = kv([/Supplier\s*VAT\s*(?:No|Number)?[^0-9]*(\d{10,15})/i, /الرقم\s*الضريبي[^0-9]*(\d{10,15})/i]);
         h.contractNumber = kv([/Contract\s*Number[^0-9]*(\d{8,13})/i, /رقم\s*العقد[^0-9]*(\d{8,13})/i]);
-        // PO Value: must contain a decimal point (SAR amount format) to avoid grabbing contract/VAT numbers
-        h.poValue = kv([/PO\s*Value[^0-9]*(\d[\d,]*\.\d{2})\s*SAR/i, /قيمة\s*أمر\s*الشراء[^0-9]*(\d[\d,]*\.\d{2})/i, /PO\s*Value[^0-9]*([\d,]+\.?\d*)\s*SAR/i]);
+        // PO Value: use non-greedy gap and require decimal format first
+        h.poValue = kv([
+            /PO\s*Value[^\d]{0,40}?(\d[\d,]*\.\d{2})\s*SAR/i,
+            /قيمة\s*أمر\s*الشراء[^\d]{0,30}?(\d[\d,]*\.\d{2})/i,
+            /(\d[\d,]*\.\d{2})\s*SAR/i,
+        ]);
+        // Sanity check: if PO value is unreasonably large, try to find smaller decimal near "PO Value"
+        if (h.poValue && _parseNumber(h.poValue) > 500000) {
+            const alt = text.match(/PO\s*Value[\s\S]{0,80}?(\d{1,3}(?:,\d{3})*\.\d{2})\s*SAR/i);
+            if (alt && _parseNumber(alt[1]) < _parseNumber(h.poValue)) {
+                console.log(`[FieldExtractor] NUPCO PO Value sanity fix: ${h.poValue} → ${alt[1]}`);
+                h.poValue = alt[1];
+            }
+        }
+        console.log(`[FieldExtractor] NUPCO headers: PO=${h.poNumber}, Date=${h.date}, Supplier=${h.supplierNumber}, Value=${h.poValue}`);
         h.supplierName = kv([/Company\s*\n?\s*([A-Z][A-Z\s&.,]+(?:CO\.?\s*LTD\.?|LLC|INC)\.?)/im, /Supplier\s*Name[^A-Z]*([A-Z][A-Z\s&.,'-]{5,80})/im]);
         if (!h.supplierName) { const m = text.match(/UNITED\s*MEDICAL\s*INDUSTRIES?\s*CO\.?\s*LTD\.?/i); if (m) h.supplierName = m[0].trim(); }
         // Clean trailing label noise from supplier name
