@@ -3,6 +3,7 @@
    Zone-based regex extraction per document type
    Maps raw OCR text → structured SAP-ready JSON
    Targets: ORDR, OPOR, ODLN
+   + NUPCO Template Parser (Phase 5 Hypercare)
    ═══════════════════════════════════════════════════════════ */
 
 const FieldExtractor = (() => {
@@ -10,12 +11,9 @@ const FieldExtractor = (() => {
 
     // ═══════════════════════════════════════
     // HEADER FIELD PATTERNS
-    // Each pattern group tries multiple regex
-    // variants to handle OCR noise/formatting
     // ═══════════════════════════════════════
 
     const HEADER_PATTERNS = {
-        // Document number
         docNumber: [
             /(?:SO|Sales\s*Order)\s*(?:#|No\.?|Number)?\s*[:.]?\s*([A-Z0-9][-A-Z0-9/]+)/i,
             /(?:PO|Purchase\s*Order)\s*(?:#|No\.?|Number)?\s*[:.]?\s*([A-Z0-9][-A-Z0-9/]+)/i,
@@ -24,32 +22,24 @@ const FieldExtractor = (() => {
             /(?:Ref|Reference)\s*(?:#|No\.?|Number)?\s*[:.]?\s*([A-Z0-9][-A-Z0-9/]+)/i,
             /(?:رقم\s*(?:الطلب|الأمر|المستند))\s*[:.]?\s*([A-Z0-9][-A-Z0-9/]+)/i,
         ],
-
-        // Document date
         docDate: [
             /(?:Date|Order\s*Date|Document\s*Date|Doc\.?\s*Date)\s*[:.]?\s*(\d{1,2}[\s./-]\d{1,2}[\s./-]\d{2,4})/i,
             /(?:Date|Order\s*Date|Document\s*Date|Doc\.?\s*Date)\s*[:.]?\s*(\d{4}[\s./-]\d{1,2}[\s./-]\d{1,2})/i,
             /(?:التاريخ|تاريخ\s*الطلب)\s*[:.]?\s*(\d{1,2}[\s./-]\d{1,2}[\s./-]\d{2,4})/i,
             /(\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{4})/i,
         ],
-
-        // Business Partner code
         cardCode: [
             /(?:Customer|Vendor|Supplier|BP)\s*(?:Code|ID|#|No\.?)\s*[:.]?\s*([A-Z]\d{3,8})/i,
             /(?:Customer|Vendor|Supplier|BP)\s*(?:Code|ID|#|No\.?)\s*[:.]?\s*([A-Z][-A-Z0-9]+)/i,
             /(?:رمز\s*(?:العميل|المورد))\s*[:.]?\s*([A-Z][-A-Z0-9]+)/i,
             /(?:Account|Acct)\s*(?:Code|#|No\.?)\s*[:.]?\s*([A-Z][-A-Z0-9]+)/i,
         ],
-
-        // Business Partner name
         cardName: [
             /(?:Customer|Vendor|Supplier|BP)\s*(?:Name)?\s*[:.]?\s*([A-Z][A-Za-z\s&.,'-]{4,60})/,
             /(?:Bill\s*To|Ship\s*To|Sold\s*To|Deliver\s*To)\s*[:.]?\s*([A-Z][A-Za-z\s&.,'-]{4,60})/i,
             /(?:Consignee|Buyer|Purchaser)\s*[:.]?\s*([A-Z][A-Za-z\s&.,'-]{4,60})/i,
             /(?:اسم\s*(?:العميل|المورد))\s*[:.]?\s*(.{4,60})/i,
         ],
-
-        // Currency
         currency: [
             /(?:Currency)\s*[:.]?\s*(SAR|USD|AED|EUR|GBP)/i,
             /(?:العملة)\s*[:.]?\s*(ريال|دولار|درهم)/i,
@@ -57,7 +47,6 @@ const FieldExtractor = (() => {
         ],
     };
 
-    // Additional patterns specific to doc types
     const TYPE_SPECIFIC_PATTERNS = {
         PURCHASE_ORDER: {
             paymentTerms: [
@@ -79,37 +68,142 @@ const FieldExtractor = (() => {
     };
 
     // ═══════════════════════════════════════
-    // LINE ITEM EXTRACTION
+    // NUPCO TEMPLATE PARSER (Phase 5)
+    // Handles grid-layout POs from NUPCO
     // ═══════════════════════════════════════
 
-    /**
-     * Extract line items from raw text
-     * Looks for tabular patterns: ItemCode | Description | Qty | Price | Total
-     * 
-     * Strategy: scan each line for a potential item code pattern followed
-     * by numeric values. OCR tables are messy, so we use multiple heuristics.
-     */
+    function _isNUPCO(text) {
+        const markers = [/NUPCO/i, /National\s*Unified\s*Procurement/i, /نوبكو/, /NUPCO\s*PO/i, /Cust\.?\s*PO\s*\/?\s*Tender/i];
+        return markers.some(m => m.test(text));
+    }
+
+    function _deduplicateOCR(text) {
+        const pages = text.split(/---\s*PAGE\s*BREAK\s*---/i);
+        if (pages.length <= 1) return text;
+        const unique = [pages[0]];
+        for (let i = 1; i < pages.length; i++) {
+            const curr = pages[i].trim();
+            if (curr.length < 30) continue;
+            const sample = curr.substring(0, Math.min(120, curr.length)).trim();
+            if (!unique.some(u => u.includes(sample))) unique.push(curr);
+        }
+        return unique.join('\n\n');
+    }
+
+    function _extractNUPCO(text) {
+        const startTime = performance.now();
+        const clean = _deduplicateOCR(text);
+        const h = _extractNUPCOHeaders(clean);
+        const lines = _extractNUPCOLines(clean, h);
+        const elapsed = Math.round(performance.now() - startTime);
+
+        console.log(`[FieldExtractor] NUPCO template — PO: ${h.poNumber}, Supplier: ${h.supplierNumber}, Lines: ${lines.length}, ${elapsed}ms`);
+
+        return {
+            docType: 'PURCHASE_ORDER',
+            docNumber: h.poNumber || null,
+            docDate: h.date ? _normalizeDate(h.date) : null,
+            cardCode: h.supplierNumber || null,
+            cardName: h.supplierName || null,
+            currency: 'SAR',
+            lines,
+            computedTotal: lines.reduce((s, l) => s + (l.total || 0), 0),
+            lineCount: lines.length,
+            typeSpecific: { contractNumber: h.contractNumber, supplierVAT: h.supplierVAT, poValue: h.poValue, nupcoTemplate: true },
+            hasUnresolvedItems: lines.some(l => l.itemCode === 'UNRESOLVED'),
+            missingFields: _findMissingFields({ docNumber: h.poNumber, docDate: h.date, cardCode: h.supplierNumber }),
+            extractionTimeMs: elapsed
+        };
+    }
+
+    function _extractNUPCOHeaders(text) {
+        const h = {};
+        const kv = (patterns) => {
+            for (const p of patterns) { const m = text.match(p); if (m && m[1]) return m[1].trim(); }
+            return null;
+        };
+        h.poNumber = kv([/NUPCO\s*PO[^0-9]*(\d{8,13})/i, /(?:PO\s*(?:No|Number|#))[^0-9]*(\d{8,13})/i, /4[56]\d{8}/]);
+        h.date = kv([/Date\s*\(?\s*Gregorian\s*\)?[^0-9]*(\d{1,2}[\/.-]\d{1,2}[\/.-]\d{2,4})/i, /التاريخ\s*الميلادي[^0-9]*(\d{1,2}[\/.-]\d{1,2}[\/.-]\d{2,4})/i]);
+        h.supplierNumber = kv([/Supplier\s*Number[^0-9]*(\d{4,8})/i, /رقم\s*المورد[^0-9]*(\d{4,8})/i]);
+        h.supplierVAT = kv([/Supplier\s*VAT\s*(?:No|Number)?[^0-9]*(\d{10,15})/i, /الرقم\s*الضريبي[^0-9]*(\d{10,15})/i]);
+        h.contractNumber = kv([/Contract\s*Number[^0-9]*(\d{8,13})/i, /رقم\s*العقد[^0-9]*(\d{8,13})/i]);
+        h.poValue = kv([/PO\s*Value[^0-9]*([\d,]+\.?\d*)\s*SAR/i, /قيمة\s*أمر\s*الشراء[^0-9]*([\d,]+\.?\d*)/i]);
+        h.supplierName = kv([/Company\s*\n?\s*([A-Z][A-Z\s&.,]+(?:CO\.?\s*LTD\.?|LLC|INC)[A-Z.\s]*)/im, /Supplier\s*Name[^A-Z]*([A-Z][A-Z\s&.,'-]{5,80})/im]);
+        if (!h.supplierName) { const m = text.match(/UNITED\s*MEDICAL\s*INDUSTRIES?\s*CO\.?\s*LTD\.?/i); if (m) h.supplierName = m[0].trim(); }
+        return h;
+    }
+
+    function _extractNUPCOLines(text, headers) {
+        const items = [];
+        // Try structured table: LineNo MaterialCode Description Qty UOM UnitPrice Total
+        const patterns = [
+            /(?:^|\n)\s*(\d{1,5})\s+(\d{5,15})\s+(.{10,80}?)\s+(\d[\d,]*\.?\d*)\s+(\w+)\s+([\d,]+\.?\d{2})\s+([\d,]+\.?\d{2})/gm,
+            /(?:^|\n)\s*(\d{1,5})\s+(\d{5,15})\s+(.{10,60}?)\s+(\d[\d,]*\.?\d*)\s+([\d,]+\.?\d{2})/gm,
+        ];
+
+        for (const p of patterns) {
+            let m;
+            while ((m = p.exec(text)) !== null) {
+                const g = m.slice(1);
+                const qty = _parseNumber(g[3]);
+                const price = _parseNumber(g.length >= 7 ? g[5] : g[4]);
+                const total = g.length >= 7 ? _parseNumber(g[6]) : qty * price;
+                if (qty > 0 && qty < 1000000 && price > 0 && price < 10000000) {
+                    items.push({ itemCode: g[1], description: g[2].trim(), quantity: qty, unitPrice: price, total, status: 'pending' });
+                }
+            }
+            if (items.length > 0) break;
+        }
+
+        // Fallback: create placeholder lines from header info
+        if (items.length === 0) {
+            const noItems = text.match(/No\s*of\s*Items\s*[^0-9]*(\d+)/i);
+            const expectedCount = noItems ? parseInt(noItems[1]) : 0;
+            const poValue = headers.poValue ? _parseNumber(headers.poValue) : 0;
+
+            if (expectedCount > 0) {
+                const perLine = expectedCount > 0 ? poValue / expectedCount : 0;
+                for (let i = 0; i < expectedCount; i++) {
+                    items.push({
+                        itemCode: 'UNRESOLVED',
+                        description: `NUPCO PO Line ${i + 1} — item details on inner pages`,
+                        quantity: 0,
+                        unitPrice: 0,
+                        total: perLine,
+                        status: 'pending'
+                    });
+                }
+                console.log(`[FieldExtractor] NUPCO fallback: ${expectedCount} lines, total SAR ${poValue}`);
+            }
+        }
+
+        // Deduplicate
+        const seen = new Set();
+        return items.filter(item => {
+            const key = `${item.itemCode}-${item.quantity}-${item.unitPrice}`;
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+        });
+    }
+
+    // ═══════════════════════════════════════
+    // LINE ITEM EXTRACTION (Generic)
+    // ═══════════════════════════════════════
+
     function _extractLineItems(text) {
         const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
         const items = [];
 
-        // Pattern: item code followed by description, numbers
-        // MED-SUTURE-3-0  UNICRYL Braided PGA 3-0  500  42.50  21,250.00
         const LINE_PATTERNS = [
-            // Pattern A: ItemCode + Description + Qty + Price + Total
             /^([A-Z][A-Z0-9]{2,}[-][A-Z0-9-]+)\s+(.{10,60}?)\s+(\d[\d,]*\.?\d*)\s+(\d[\d,]*\.?\d{2})\s+(\d[\d,]*\.?\d{2})/,
-            // Pattern B: Line# + ItemCode + Description + Qty + Price + Total
             /^\d+\s+([A-Z][A-Z0-9]{2,}[-][A-Z0-9-]+)\s+(.{10,60}?)\s+(\d[\d,]*\.?\d*)\s+(\d[\d,]*\.?\d{2})\s+(\d[\d,]*\.?\d{2})/,
-            // Pattern C: ItemCode + Description + Qty + Price (no total)
             /^([A-Z][A-Z0-9]{2,}[-][A-Z0-9-]+)\s+(.{10,60}?)\s+(\d[\d,]*\.?\d*)\s+(\d[\d,]*\.?\d{2})/,
-            // Pattern D: Numeric item code
             /^(\d{4,10})\s+(.{10,60}?)\s+(\d[\d,]*\.?\d*)\s+(\d[\d,]*\.?\d{2})\s+(\d[\d,]*\.?\d{2})/,
-            // Pattern E: Line# + Description + Qty + Price + Total (no item code)
             /^\d+\s+(.{15,60}?)\s+(\d[\d,]*\.?\d*)\s+(\d[\d,]*\.?\d{2})\s+(\d[\d,]*\.?\d{2})/,
         ];
 
         for (const line of lines) {
-            // Skip header/footer lines
             if (/^(item|#|no\.|line|description|qty|quantity|price|amount|total|sub|tax|vat|grand)/i.test(line)) continue;
             if (/^[-=_]{3,}/.test(line)) continue;
 
@@ -118,84 +212,41 @@ const FieldExtractor = (() => {
                 if (match) {
                     const groups = match.slice(1);
                     let item;
-
                     if (groups.length === 5) {
-                        item = {
-                            itemCode: _cleanItemCode(groups[0]),
-                            description: groups[1].trim(),
-                            quantity: _parseNumber(groups[2]),
-                            unitPrice: _parseNumber(groups[3]),
-                            total: _parseNumber(groups[4]),
-                            status: 'pending'
-                        };
+                        item = { itemCode: _cleanItemCode(groups[0]), description: groups[1].trim(), quantity: _parseNumber(groups[2]), unitPrice: _parseNumber(groups[3]), total: _parseNumber(groups[4]), status: 'pending' };
                     } else if (groups.length === 4) {
                         const hasItemCode = /^[A-Z]/.test(groups[0]);
                         if (hasItemCode) {
-                            item = {
-                                itemCode: _cleanItemCode(groups[0]),
-                                description: groups[1].trim(),
-                                quantity: _parseNumber(groups[2]),
-                                unitPrice: _parseNumber(groups[3]),
-                                total: _parseNumber(groups[2]) * _parseNumber(groups[3]),
-                                status: 'pending'
-                            };
+                            item = { itemCode: _cleanItemCode(groups[0]), description: groups[1].trim(), quantity: _parseNumber(groups[2]), unitPrice: _parseNumber(groups[3]), total: _parseNumber(groups[2]) * _parseNumber(groups[3]), status: 'pending' };
                         } else {
-                            item = {
-                                itemCode: 'UNRESOLVED',
-                                description: groups[0].trim(),
-                                quantity: _parseNumber(groups[1]),
-                                unitPrice: _parseNumber(groups[2]),
-                                total: _parseNumber(groups[3]),
-                                status: 'pending'
-                            };
+                            item = { itemCode: 'UNRESOLVED', description: groups[0].trim(), quantity: _parseNumber(groups[1]), unitPrice: _parseNumber(groups[2]), total: _parseNumber(groups[3]), status: 'pending' };
                         }
                     }
-
-                    if (item && item.quantity > 0) {
-                        items.push(item);
-                    }
-                    break; // Only match first pattern per line
+                    if (item && item.quantity > 0) items.push(item);
+                    break;
                 }
             }
         }
 
-        // ── Fallback: if no items found, try aggressive number scanning ──
-        if (items.length === 0) {
-            return _fallbackLineExtraction(lines);
-        }
-
+        if (items.length === 0) return _fallbackLineExtraction(lines);
         return items;
     }
 
-    /**
-     * Fallback extraction for heavily degraded OCR
-     * Looks for any line containing 2+ numbers
-     */
     function _fallbackLineExtraction(lines) {
         const items = [];
         const numericLinePattern = /(.{5,50}?)\s+(\d[\d,]*\.?\d*)\s+.*?(\d[\d,]*\.?\d{2})/;
-
         for (const line of lines) {
-            if (items.length >= 20) break; // Safety cap
+            if (items.length >= 20) break;
             if (/^(item|#|total|sub|tax|date|page)/i.test(line)) continue;
-
             const match = line.match(numericLinePattern);
             if (match) {
                 const qty = _parseNumber(match[2]);
                 const price = _parseNumber(match[3]);
                 if (qty > 0 && price > 0) {
-                    items.push({
-                        itemCode: 'UNRESOLVED',
-                        description: match[1].trim(),
-                        quantity: qty,
-                        unitPrice: price,
-                        total: qty * price,
-                        status: 'pending'
-                    });
+                    items.push({ itemCode: 'UNRESOLVED', description: match[1].trim(), quantity: qty, unitPrice: price, total: qty * price, status: 'pending' });
                 }
             }
         }
-
         return items;
     }
 
@@ -203,47 +254,39 @@ const FieldExtractor = (() => {
     // CORE: EXTRACT FIELDS
     // ═══════════════════════════════════════
 
-    /**
-     * Extract structured fields from OCR text
-     * @param {string} text - Full OCR text
-     * @param {string} docType - Classified document type
-     * @returns {object} Structured extraction result
-     */
     function extract(text, docType) {
         const startTime = performance.now();
 
-        // ── 1. Extract header fields ──
+        // ── NUPCO Template Detection ──
+        if (_isNUPCO(text)) {
+            console.log('[FieldExtractor] 🏥 NUPCO template detected — using specialized parser');
+            return _extractNUPCO(text);
+        }
+
+        // ── Generic extraction ──
         const headers = {};
         for (const [field, patterns] of Object.entries(HEADER_PATTERNS)) {
             headers[field] = _matchFirst(text, patterns);
         }
 
-        // ── 2. Type-specific fields ──
         const typeFields = {};
         const specificPatterns = TYPE_SPECIFIC_PATTERNS[docType] || {};
         for (const [field, patterns] of Object.entries(specificPatterns)) {
             typeFields[field] = _matchFirst(text, patterns);
         }
 
-        // ── 3. Extract line items ──
         const lines = _extractLineItems(text);
 
-        // ── 4. Normalize date ──
-        if (headers.docDate) {
-            headers.docDate = _normalizeDate(headers.docDate);
-        }
+        if (headers.docDate) headers.docDate = _normalizeDate(headers.docDate);
 
-        // ── 5. Detect currency if not explicit ──
         if (!headers.currency) {
             if (/SAR|ريال|ر\.\s*س/i.test(text)) headers.currency = 'SAR';
             else if (/USD|\$/i.test(text)) headers.currency = 'USD';
             else if (/AED|درهم/i.test(text)) headers.currency = 'AED';
-            else headers.currency = 'SAR'; // Default for UNIMED
+            else headers.currency = 'SAR';
         }
 
-        // ── 6. Compute totals ──
         const computedTotal = lines.reduce((sum, l) => sum + (l.total || 0), 0);
-
         const elapsed = Math.round(performance.now() - startTime);
 
         const result = {
@@ -263,7 +306,6 @@ const FieldExtractor = (() => {
         };
 
         console.log(`[FieldExtractor] Extracted: ${result.lineCount} lines, total=${result.computedTotal}, missing=[${result.missingFields.join(', ')}], ${elapsed}ms`);
-
         return result;
     }
 
@@ -271,22 +313,14 @@ const FieldExtractor = (() => {
     // HELPERS
     // ═══════════════════════════════════════
 
-    /**
-     * Try multiple patterns, return first match group 1
-     */
     function _matchFirst(text, patterns) {
         for (const pattern of patterns) {
             const match = text.match(pattern);
-            if (match && match[1]) {
-                return match[1].trim();
-            }
+            if (match && match[1]) return match[1].trim();
         }
         return null;
     }
 
-    /**
-     * Parse a number from OCR text (handles commas, spaces)
-     */
     function _parseNumber(str) {
         if (!str) return 0;
         const cleaned = str.replace(/[,\s]/g, '');
@@ -294,59 +328,30 @@ const FieldExtractor = (() => {
         return isNaN(num) ? 0 : num;
     }
 
-    /**
-     * Clean an item code from OCR artifacts
-     */
     function _cleanItemCode(code) {
         if (!code) return 'UNRESOLVED';
         return code.replace(/[|\\]/g, '').replace(/\s+/g, '-').toUpperCase();
     }
 
-    /**
-     * Normalize various date formats to YYYY-MM-DD
-     */
     function _normalizeDate(dateStr) {
         if (!dateStr) return null;
-
-        // Try ISO-ish: 2026-03-09
         const isoMatch = dateStr.match(/(\d{4})[.\/-](\d{1,2})[.\/-](\d{1,2})/);
-        if (isoMatch) {
-            return `${isoMatch[1]}-${isoMatch[2].padStart(2, '0')}-${isoMatch[3].padStart(2, '0')}`;
-        }
-
-        // Try DD/MM/YYYY or DD-MM-YYYY
+        if (isoMatch) return `${isoMatch[1]}-${isoMatch[2].padStart(2, '0')}-${isoMatch[3].padStart(2, '0')}`;
         const dmyMatch = dateStr.match(/(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{4})/);
-        if (dmyMatch) {
-            return `${dmyMatch[3]}-${dmyMatch[2].padStart(2, '0')}-${dmyMatch[1].padStart(2, '0')}`;
-        }
-
-        // Try "09 March 2026"
-        const monthNames = {
-            jan: '01', feb: '02', mar: '03', apr: '04', may: '05', jun: '06',
-            jul: '07', aug: '08', sep: '09', oct: '10', nov: '11', dec: '12'
-        };
+        if (dmyMatch) return `${dmyMatch[3]}-${dmyMatch[2].padStart(2, '0')}-${dmyMatch[1].padStart(2, '0')}`;
+        const monthNames = { jan: '01', feb: '02', mar: '03', apr: '04', may: '05', jun: '06', jul: '07', aug: '08', sep: '09', oct: '10', nov: '11', dec: '12' };
         const longMatch = dateStr.match(/(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})/);
-        if (longMatch) {
-            const monthKey = longMatch[2].substring(0, 3).toLowerCase();
-            const month = monthNames[monthKey];
-            if (month) {
-                return `${longMatch[3]}-${month}-${longMatch[1].padStart(2, '0')}`;
-            }
-        }
-
-        return dateStr; // Return as-is if unparseable
+        if (longMatch) { const mk = longMatch[2].substring(0, 3).toLowerCase(); if (monthNames[mk]) return `${longMatch[3]}-${monthNames[mk]}-${longMatch[1].padStart(2, '0')}`; }
+        return dateStr;
     }
 
-    /**
-     * Identify missing critical fields
-     */
     function _findMissingFields(headers) {
         const required = ['docNumber', 'docDate', 'cardCode'];
         return required.filter(f => !headers[f]);
     }
 
     function init() {
-        console.log('[FieldExtractor] ✅ Initialized — SAP field mapping ready');
+        console.log('[FieldExtractor] ✅ Initialized — SAP field mapping ready (NUPCO template enabled)');
     }
 
     return {

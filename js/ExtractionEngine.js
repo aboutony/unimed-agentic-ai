@@ -24,7 +24,7 @@ const ExtractionEngine = (() => {
 
         _reportProgress('ocr_init', 'Initializing Tesseract.js OCR engine...');
 
-        _worker = await Tesseract.createWorker('eng', 1, {
+        _worker = await Tesseract.createWorker('eng+ara', 1, {
             logger: (info) => {
                 if (info.status === 'recognizing text') {
                     const pct = Math.round((info.progress || 0) * 100);

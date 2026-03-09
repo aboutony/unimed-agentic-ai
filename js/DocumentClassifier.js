@@ -48,13 +48,19 @@ const DocumentClassifier = (() => {
             { pattern: /purchase\s*order/i, weight: 3 },
             { pattern: /\bPO[-#\s]?\d/i, weight: 3 },
             { pattern: /procurement\s*order/i, weight: 3 },
+            // NUPCO — definitive
+            { pattern: /NUPCO\s*PO/i, weight: 3 },
+            { pattern: /NUPCO/i, weight: 2 },
+            { pattern: /National\s*Unified\s*Procurement/i, weight: 3 },
+            { pattern: /Cust\.?\s*PO\s*\/\s*Tender/i, weight: 3 },
+            { pattern: /نوبكو/i, weight: 3 },
             // Arabic — definitive
             { pattern: /أمر\s*شراء/i, weight: 3 },
             { pattern: /طلب\s*شراء/i, weight: 3 },
             { pattern: /أمر\s*توريد/i, weight: 3 },
             // English — strong
             { pattern: /vendor\s*(code|name|id|number)/i, weight: 2 },
-            { pattern: /supplier\s*(code|name|id)/i, weight: 2 },
+            { pattern: /supplier\s*(code|name|id|number)/i, weight: 2 },
             { pattern: /procurement/i, weight: 2 },
             { pattern: /purchase\s*requisition/i, weight: 2 },
             { pattern: /buyer/i, weight: 1 },
@@ -65,6 +71,8 @@ const DocumentClassifier = (() => {
             { pattern: /lead\s*time/i, weight: 1 },
             { pattern: /expected\s*delivery/i, weight: 1 },
             { pattern: /raw\s*material/i, weight: 1 },
+            { pattern: /contract\s*number/i, weight: 1 },
+            { pattern: /supplier\s*vat/i, weight: 1 },
         ],
 
         DELIVERY_NOTE: [
