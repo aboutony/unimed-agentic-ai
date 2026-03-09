@@ -11,6 +11,10 @@
     // ══════════════════════════════════════
     if (!AuthGateway.guard()) return;
 
+    // Reveal content (hidden by default to prevent flash before auth redirect)
+    const appEl = document.getElementById('appUniverse');
+    if (appEl) appEl.style.opacity = '';
+
     const session = AuthGateway.getSession();
     console.log(`[App] Welcome, ${session.name} (${session.role})`);
 

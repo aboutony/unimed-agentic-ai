@@ -12,6 +12,18 @@
     <link rel="stylesheet" href="css/pipeline.css">
     <link rel="stylesheet" href="css/uat.css">
 
+    <!-- Auth Guard: redirect BEFORE content renders -->
+    <script>
+        (function () {
+            try {
+                var raw = sessionStorage.getItem('unimed-session');
+                if (!raw) { window.location.replace('login.html'); return; }
+                var s = JSON.parse(raw);
+                if (Date.now() - s.timestamp > 28800000) { window.location.replace('login.html'); return; }
+            } catch (e) { window.location.replace('login.html'); }
+        })();
+    </script>
+
     <!-- CDN Dependencies: PDF.js + Tesseract.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.9.155/pdf.min.mjs" type="module"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.9.155/pdf.worker.min.mjs" type="module"></script>
@@ -38,7 +50,7 @@
         <div class="orb orb-2"></div>
     </div>
 
-    <div class="app-universe" id="appUniverse">
+    <div class="app-universe" id="appUniverse" style="opacity:0">
 
         <!-- ═══════ TOPBAR ═══════ -->
         <header class="topbar" data-domain="HEALTHCARE">
