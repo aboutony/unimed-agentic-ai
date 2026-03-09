@@ -122,24 +122,34 @@ const FieldExtractor = (() => {
             for (const p of patterns) { const m = text.match(p); if (m && m[1]) return m[1].trim(); }
             return null;
         };
-        h.poNumber = kv([/NUPCO\s*PO[^0-9]*(\d{8,13})/i, /(?:PO\s*(?:No|Number|#))[^0-9]*(\d{8,13})/i, /4[56]\d{8}/]);
+        h.poNumber = kv([/NUPCO\s*PO[^0-9]*(\d{8,13})/i, /(?:PO\s*(?:No|Number|#))[^0-9]*(\d{8,13})/i, /\b(4\d{9})\b/]);
         h.date = kv([/Date\s*\(?\s*Gregorian\s*\)?[^0-9]*(\d{1,2}[\/.-]\d{1,2}[\/.-]\d{2,4})/i, /التاريخ\s*الميلادي[^0-9]*(\d{1,2}[\/.-]\d{1,2}[\/.-]\d{2,4})/i]);
         h.supplierNumber = kv([/Supplier\s*Number[^0-9]*(\d{4,8})/i, /رقم\s*المورد[^0-9]*(\d{4,8})/i]);
         h.supplierVAT = kv([/Supplier\s*VAT\s*(?:No|Number)?[^0-9]*(\d{10,15})/i, /الرقم\s*الضريبي[^0-9]*(\d{10,15})/i]);
         h.contractNumber = kv([/Contract\s*Number[^0-9]*(\d{8,13})/i, /رقم\s*العقد[^0-9]*(\d{8,13})/i]);
-        // PO Value: OCR drops commas and decimals (7,312.50 → 731250)
+        // PO Value: OCR drops commas and decimals (7,312.50 → 731250) or (1,053,000.00 → 105300000)
         h.poValue = kv([
-            /PO\s*Value[\s\S]{0,120}?(\d{1,3}(?:,\d{3})*\.\d{2})\s*SAR/i,
-            /PO\s*Value[\s\S]{0,120}?(\d[\d,]*\.\d{2})\s*SAR/i,
-            /PO\s*Value[\s\S]{0,120}?(\d[\d,]*\.\d{2})/i,
-            /PO\s*Value\s+(\d+)\s*SAR/i,
+            /PO\s*Value[\s\S]{0,150}?(\d{1,3}(?:,\d{3})*\.\d{2})\s*SAR/i,
+            /PO\s*Value[\s\S]{0,150}?SAR\s*(\d{1,3}(?:,\d{3})*\.\d{2})/i,
+            /قيمة[\s\S]{0,20}?أمر[\s\S]{0,20}?الشراء[\s\S]{0,60}?(\d{1,3}(?:,\d{3})*\.\d{2})/i,
+            /PO\s*Value[\s\S]{0,150}?(\d[\d,]*\.\d{2})/i,
+            /PO\s*Value[\s\S]{0,50}?(\d[\d,]+)\s*SAR/i,
         ]);
         // Auto-correct: if OCR dropped the decimal (731250 instead of 7312.50), fix it
         if (h.poValue && !h.poValue.includes('.')) {
-            const raw = parseInt(h.poValue);
-            const corrected = (raw / 100).toFixed(2);
-            console.log(`[FieldExtractor] NUPCO PO Value decimal fix: ${h.poValue} → ${corrected}`);
-            h.poValue = corrected;
+            const raw = parseInt(h.poValue.replace(/,/g, ''));
+            if (raw > 100) {
+                const corrected = (raw / 100).toFixed(2);
+                console.log(`[FieldExtractor] NUPCO PO Value decimal fix: ${h.poValue} → ${corrected}`);
+                h.poValue = corrected;
+            }
+        }
+        // Reject obviously wrong values (00.00, 0.00)
+        if (h.poValue && parseFloat(h.poValue) < 1) h.poValue = null;
+        // DIAGNOSTIC: dump OCR text near PO Value for debugging
+        const pvIdx = text.search(/PO\s*Value/i);
+        if (pvIdx >= 0) {
+            console.log(`[FieldExtractor] DEBUG PO Value area: "${text.substring(pvIdx, pvIdx + 200).replace(/\n/g, '↵')}"`);
         }
         console.log(`[FieldExtractor] NUPCO headers: PO=${h.poNumber}, Date=${h.date}, Supplier=${h.supplierNumber}, Value=${h.poValue}`);
         h.supplierName = kv([/Company\s*\n?\s*([A-Z][A-Z\s&.,]+(?:CO\.?\s*LTD\.?|LLC|INC)\.?)/im, /Supplier\s*Name[^A-Z]*([A-Z][A-Z\s&.,'-]{5,80})/im]);
@@ -178,17 +188,18 @@ const FieldExtractor = (() => {
 
         // Fallback: create placeholder lines from header info
         if (items.length === 0) {
-            // Try multiple patterns for No of Items — OCR may inject Arabic text between label and value
+            // Try multiple patterns for No of Items — avoid matching 'No of SKUs'
             let expectedCount = 0;
             const itemPatterns = [
-                /No\s*of\s*Items[\s\S]{0,30}?(\d+)/i,
-                /عدد\s*البنود[\s\S]{0,20}?(\d+)/,
-                /No\.?\s*of\s*Items\s*\n[^\n]*(\d+)/i,
+                /No\s*of\s*Items\s*(?:عدد\s*البنود)?\s*(\d+)/i,
+                /No\s*of\s*Items\b[\s\S]{0,40}?\b(\d+)/i,
+                /عدد\s*البنود\s*(\d+)/,
             ];
             for (const p of itemPatterns) {
                 const m = text.match(p);
                 if (m && parseInt(m[1]) > 0 && parseInt(m[1]) <= 100) {
                     expectedCount = parseInt(m[1]);
+                    console.log(`[FieldExtractor] NUPCO item count matched: ${m[0].trim()} → ${expectedCount}`);
                     break;
                 }
             }
