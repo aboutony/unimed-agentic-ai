@@ -127,9 +127,17 @@ const FieldExtractor = (() => {
         h.supplierNumber = kv([/Supplier\s*Number[^0-9]*(\d{4,8})/i, /رقم\s*المورد[^0-9]*(\d{4,8})/i]);
         h.supplierVAT = kv([/Supplier\s*VAT\s*(?:No|Number)?[^0-9]*(\d{10,15})/i, /الرقم\s*الضريبي[^0-9]*(\d{10,15})/i]);
         h.contractNumber = kv([/Contract\s*Number[^0-9]*(\d{8,13})/i, /رقم\s*العقد[^0-9]*(\d{8,13})/i]);
-        h.poValue = kv([/PO\s*Value[^0-9]*([\d,]+\.?\d*)\s*SAR/i, /قيمة\s*أمر\s*الشراء[^0-9]*([\d,]+\.?\d*)/i]);
-        h.supplierName = kv([/Company\s*\n?\s*([A-Z][A-Z\s&.,]+(?:CO\.?\s*LTD\.?|LLC|INC)[A-Z.\s]*)/im, /Supplier\s*Name[^A-Z]*([A-Z][A-Z\s&.,'-]{5,80})/im]);
+        // PO Value: must contain a decimal point (SAR amount format) to avoid grabbing contract/VAT numbers
+        h.poValue = kv([/PO\s*Value[^0-9]*(\d[\d,]*\.\d{2})\s*SAR/i, /قيمة\s*أمر\s*الشراء[^0-9]*(\d[\d,]*\.\d{2})/i, /PO\s*Value[^0-9]*([\d,]+\.?\d*)\s*SAR/i]);
+        h.supplierName = kv([/Company\s*\n?\s*([A-Z][A-Z\s&.,]+(?:CO\.?\s*LTD\.?|LLC|INC)\.?)/im, /Supplier\s*Name[^A-Z]*([A-Z][A-Z\s&.,'-]{5,80})/im]);
         if (!h.supplierName) { const m = text.match(/UNITED\s*MEDICAL\s*INDUSTRIES?\s*CO\.?\s*LTD\.?/i); if (m) h.supplierName = m[0].trim(); }
+        // Clean trailing label noise from supplier name
+        if (h.supplierName) {
+            h.supplierName = h.supplierName
+                .replace(/\s*(Supplier\s*Name|اسم\s*المورد|Company|الشركة)\s*$/i, '')
+                .replace(/\s{2,}/g, ' ')
+                .trim();
+        }
         return h;
     }
 
@@ -157,12 +165,25 @@ const FieldExtractor = (() => {
 
         // Fallback: create placeholder lines from header info
         if (items.length === 0) {
-            const noItems = text.match(/No\s*of\s*Items\s*[^0-9]*(\d+)/i);
-            const expectedCount = noItems ? parseInt(noItems[1]) : 0;
+            // Try multiple patterns for No of Items — OCR may inject Arabic text between label and value
+            let expectedCount = 0;
+            const itemPatterns = [
+                /No\s*of\s*Items[\s\S]{0,30}?(\d+)/i,
+                /عدد\s*البنود[\s\S]{0,20}?(\d+)/,
+                /No\.?\s*of\s*Items\s*\n[^\n]*(\d+)/i,
+            ];
+            for (const p of itemPatterns) {
+                const m = text.match(p);
+                if (m && parseInt(m[1]) > 0 && parseInt(m[1]) <= 100) {
+                    expectedCount = parseInt(m[1]);
+                    break;
+                }
+            }
+
             const poValue = headers.poValue ? _parseNumber(headers.poValue) : 0;
 
             if (expectedCount > 0) {
-                const perLine = expectedCount > 0 ? poValue / expectedCount : 0;
+                const perLine = poValue / expectedCount;
                 for (let i = 0; i < expectedCount; i++) {
                     items.push({
                         itemCode: 'UNRESOLVED',
@@ -177,10 +198,10 @@ const FieldExtractor = (() => {
             }
         }
 
-        // Deduplicate
+        // Deduplicate (use description in key to preserve distinct placeholders)
         const seen = new Set();
         return items.filter(item => {
-            const key = `${item.itemCode}-${item.quantity}-${item.unitPrice}`;
+            const key = `${item.itemCode}-${item.description}-${item.quantity}-${item.unitPrice}`;
             if (seen.has(key)) return false;
             seen.add(key);
             return true;
