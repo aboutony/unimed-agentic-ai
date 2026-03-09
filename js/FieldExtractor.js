@@ -123,26 +123,41 @@ const FieldExtractor = (() => {
             return null;
         };
         h.poNumber = kv([/NUPCO\s*PO[^0-9]*(\d{8,13})/i, /(?:PO\s*(?:No|Number|#))[^0-9]*(\d{8,13})/i, /\b(4\d{9})\b/]);
+        // PO Number fallback: if captured number starts unexpectedly, try to find 10-digit PO in full text
+        if (!h.poNumber || h.poNumber.length < 10) {
+            const fullMatch = text.match(/\b(4[1-6]\d{8})\b/);
+            if (fullMatch) h.poNumber = fullMatch[1];
+        }
+        // DEBUG: show what's near NUPCO PO
+        const poIdx = text.search(/NUPCO\s*PO/i);
+        if (poIdx >= 0) console.log(`[FieldExtractor] DEBUG PO# area: "${text.substring(poIdx, poIdx + 60).replace(/\n/g, '↵')}"`);
         h.date = kv([/Date\s*\(?\s*Gregorian\s*\)?[^0-9]*(\d{1,2}[\/.-]\d{1,2}[\/.-]\d{2,4})/i, /التاريخ\s*الميلادي[^0-9]*(\d{1,2}[\/.-]\d{1,2}[\/.-]\d{2,4})/i]);
         h.supplierNumber = kv([/Supplier\s*Number[^0-9]*(\d{4,8})/i, /رقم\s*المورد[^0-9]*(\d{4,8})/i]);
         h.supplierVAT = kv([/Supplier\s*VAT\s*(?:No|Number)?[^0-9]*(\d{10,15})/i, /الرقم\s*الضريبي[^0-9]*(\d{10,15})/i]);
         h.contractNumber = kv([/Contract\s*Number[^0-9]*(\d{8,13})/i, /رقم\s*العقد[^0-9]*(\d{8,13})/i]);
-        // PO Value: OCR drops commas and decimals (7,312.50 → 731250) or (1,053,000.00 → 105300000)
+        // PO Value: OCR may produce double-decimal (1,053,000.00 → 1050.00.00) or no decimal (7,312.50 → 731250)
         h.poValue = kv([
             /PO\s*Value[\s\S]{0,150}?(\d{1,3}(?:,\d{3})*\.\d{2})\s*SAR/i,
-            /PO\s*Value[\s\S]{0,150}?SAR\s*(\d{1,3}(?:,\d{3})*\.\d{2})/i,
-            /قيمة[\s\S]{0,20}?أمر[\s\S]{0,20}?الشراء[\s\S]{0,60}?(\d{1,3}(?:,\d{3})*\.\d{2})/i,
-            /PO\s*Value[\s\S]{0,150}?(\d[\d,]*\.\d{2})/i,
+            /PO\s*Value[\s\S]{0,150}?(\d[\d.,]+)\s*SAR/i,
             /PO\s*Value[\s\S]{0,50}?(\d[\d,]+)\s*SAR/i,
         ]);
-        // Auto-correct: if OCR dropped the decimal (731250 instead of 7312.50), fix it
-        if (h.poValue && !h.poValue.includes('.')) {
-            const raw = parseInt(h.poValue.replace(/,/g, ''));
-            if (raw > 100) {
-                const corrected = (raw / 100).toFixed(2);
-                console.log(`[FieldExtractor] NUPCO PO Value decimal fix: ${h.poValue} → ${corrected}`);
-                h.poValue = corrected;
+        // Clean PO value: handle double-decimal OCR artifacts (1050.00.00 → 1050.0000 → 105000.00)
+        if (h.poValue) {
+            let cleaned = h.poValue.replace(/,/g, '');
+            // Count decimal points
+            const dots = (cleaned.match(/\./g) || []).length;
+            if (dots > 1) {
+                // Multiple decimals: remove all dots, divide by 100
+                const raw = parseInt(cleaned.replace(/\./g, ''));
+                cleaned = (raw / 100).toFixed(2);
+                console.log(`[FieldExtractor] NUPCO PO Value multi-decimal fix: ${h.poValue} → ${cleaned}`);
+            } else if (dots === 0 && cleaned.length > 3) {
+                // No decimal: divide by 100
+                const raw = parseInt(cleaned);
+                cleaned = (raw / 100).toFixed(2);
+                console.log(`[FieldExtractor] NUPCO PO Value decimal fix: ${h.poValue} → ${cleaned}`);
             }
+            h.poValue = cleaned;
         }
         // Reject obviously wrong values (00.00, 0.00)
         if (h.poValue && parseFloat(h.poValue) < 1) h.poValue = null;
@@ -188,21 +203,35 @@ const FieldExtractor = (() => {
 
         // Fallback: create placeholder lines from header info
         if (items.length === 0) {
-            // Try multiple patterns for No of Items — avoid matching 'No of SKUs'
+            // Extract item count: OCR puts "No of Items" and "No of SKUs" on same line
+            // with values on the NEXT line as "4 2" — we need the FIRST number
             let expectedCount = 0;
-            const itemPatterns = [
-                /No\s*of\s*Items\s*(?:عدد\s*البنود)?\s*(\d+)/i,
-                /No\s*of\s*Items\b[\s\S]{0,40}?\b(\d+)/i,
-                /عدد\s*البنود\s*(\d+)/,
-            ];
-            for (const p of itemPatterns) {
-                const m = text.match(p);
-                if (m && parseInt(m[1]) > 0 && parseInt(m[1]) <= 100) {
-                    expectedCount = parseInt(m[1]);
-                    console.log(`[FieldExtractor] NUPCO item count matched: ${m[0].trim()} → ${expectedCount}`);
-                    break;
+
+            // Strategy: find "No of Items" then scan for the first standalone digit
+            // but STOP before "Supplier" or "Incoterms" (next section)
+            const itemSection = text.match(/No\s*of\s*Items[\s\S]{0,80}?(?=Incoterms|Supplier|Contract|$)/i);
+            if (itemSection) {
+                // Find ALL numbers in this section
+                const nums = itemSection[0].match(/\b(\d+)\b/g);
+                if (nums) {
+                    // The FIRST number in the section that could be an item count
+                    for (const n of nums) {
+                        const val = parseInt(n);
+                        if (val > 0 && val <= 100) {
+                            expectedCount = val;
+                            break;
+                        }
+                    }
                 }
             }
+
+            // Fallback: Arabic label
+            if (expectedCount === 0) {
+                const arabicMatch = text.match(/عدد\s*البنود\s*(\d+)/);
+                if (arabicMatch) expectedCount = parseInt(arabicMatch[1]);
+            }
+
+            console.log(`[FieldExtractor] NUPCO item count: ${expectedCount}`);
 
             const poValue = headers.poValue ? _parseNumber(headers.poValue) : 0;
 
