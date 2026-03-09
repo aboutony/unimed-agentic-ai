@@ -142,10 +142,12 @@ const FieldExtractor = (() => {
         h.supplierVAT = kv([/Supplier\s*VAT\s*(?:No|Number)?[^0-9]*(\d{10,15})/i, /الرقم\s*الضريبي[^0-9]*(\d{10,15})/i]);
         h.contractNumber = kv([/Contract\s*Number[^0-9]*(\d{8,13})/i, /رقم\s*العقد[^0-9]*(\d{8,13})/i]);
         // PO Value: OCR may produce double-decimal (1,053,000.00 → 1050.00.00) or no decimal (7,312.50 → 731250)
+        // IMPORTANT: flexible patterns FIRST to avoid Pattern 1 grabbing '00.00' tail from '1050.00.00'
         h.poValue = kv([
-            /PO\s*Value[\s\S]{0,150}?(\d{1,3}(?:,\d{3})*\.\d{2})\s*SAR/i,
             /PO\s*Value[\s\S]{0,150}?(\d{3}[\d.,]+)\s*SAR/i,
             /PO\s*Value[\s\S]{0,50}?(\d{3}[\d,]+)\s*SAR/i,
+            /PO\s*Value[\s\S]{0,150}?([1-9]\d{0,2}(?:,\d{3})*\.\d{2})\s*SAR/i,
+            /PO\s*Value\s+(\d+)\s*SAR/i,
         ]);
         // Clean PO value: handle double-decimal OCR artifacts (1050.00.00 → 1050.0000 → 105000.00)
         if (h.poValue) {
@@ -213,16 +215,17 @@ const FieldExtractor = (() => {
             // with values on the NEXT line as "4 2" — we need the FIRST number
             let expectedCount = 0;
 
-            // Strategy: find "No of Items" then scan for the first standalone digit
-            // but STOP before "Supplier" or "Incoterms" (next section)
-            const itemSection = text.match(/No\s*of\s*Items[\s\S]{0,100}?(?=Incoterms|Supplier|Contract|$)/i);
+            // Strategy: find "No of Items" section, extract ALL numbers, take the MAX
+            // (item count ≥ SKU count, avoids OCR text ordering issues)
+            const itemSection = text.match(/No\s*of\s*Items[\s\S]{0,120}?(?=Incoterms|Supplier\s*Number|Contract|$)/i);
             if (itemSection) {
-                // Find ALL numbers in this section
-                const nums = itemSection[0].match(/\b(\d+)\b/g);
+                console.log(`[FieldExtractor] DEBUG Items section: "${itemSection[0].replace(/\n/g, '↵')}"`);
+                // Find ALL standalone numbers in this section
+                const nums = itemSection[0].match(/(?:^|\s)(\d{1,3})(?:\s|$|\b)/g);
                 if (nums) {
-                    // Take the MAX number (item count >= SKU count, avoids OCR ordering issues)
-                    for (const n of nums) {
-                        const val = parseInt(n);
+                    // Take the MAX number (item count >= SKU count)
+                    for (const raw of nums) {
+                        const val = parseInt(raw.trim());
                         if (val > 0 && val <= 100 && val > expectedCount) {
                             expectedCount = val;
                         }
