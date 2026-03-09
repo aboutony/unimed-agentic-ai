@@ -1,0 +1,164 @@
+/* ═══════════════════════════════════════════════════════════
+   UNIMED AGENTIC AI — Design Token System
+   Official Brand: United Medical Industries Co. Ltd.
+   ═══════════════════════════════════════════════════════════ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Tajawal:wght@300;400;500;700;800&display=swap');
+
+:root {
+    /* ── UNIMED Brand Identity ── */
+    --brand-primary: #07427D;
+    --brand-primary-light: #0A5BA8;
+    --brand-primary-dark: #053262;
+    --brand-accent: #7AB8E1;
+    --brand-accent-deep: #5A9BC7;
+    --brand-muted: #A6C1D3;
+    --brand-gold: #F59E0B;
+
+    /* ── Legacy aliases (backwards compat) ── */
+    --brand-teal: var(--brand-primary);
+    --brand-teal-light: var(--brand-primary-light);
+    --brand-teal-dark: var(--brand-primary-dark);
+    --brand-emerald: var(--brand-accent);
+    --brand-emerald-deep: var(--brand-accent-deep);
+    --brand-cyan: var(--brand-muted);
+
+    /* ── Healthcare Semantic ── */
+    --health-pulse: #7AB8E1;
+    --health-critical: #EF4444;
+    --health-warning: #F59E0B;
+    --health-info: #0A5BA8;
+    --health-success: #22C55E;
+
+    /* ── SAP Handshake States ── */
+    --sap-idle: #6B7280;
+    --sap-syncing: #3B82F6;
+    --sap-connected: #22C55E;
+    --sap-error: #EF4444;
+
+    /* ── Typography ── */
+    --font-primary: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-arabic: 'Tajawal', 'Inter', sans-serif;
+    --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+
+    /* ── Spacing Scale ── */
+    --space-xs: 0.25rem;
+    --space-sm: 0.5rem;
+    --space-md: 1rem;
+    --space-lg: 1.5rem;
+    --space-xl: 2rem;
+    --space-2xl: 3rem;
+    --space-3xl: 4rem;
+
+    /* ── Border Radius ── */
+    --radius-sm: 6px;
+    --radius-md: 12px;
+    --radius-lg: 20px;
+    --radius-xl: 28px;
+    --radius-full: 999px;
+
+    /* ── Transitions ── */
+    --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-base: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-smooth: 400ms cubic-bezier(0.16, 1, 0.3, 1);
+    --transition-story: 800ms cubic-bezier(0.16, 1, 0.3, 1);
+
+    /* ── Glass Effects ── */
+    --glass-blur: blur(24px);
+    --glass-blur-heavy: blur(40px);
+
+    /* ── Z-Index Scale ── */
+    --z-base: 1;
+    --z-dropdown: 100;
+    --z-sticky: 200;
+    --z-overlay: 500;
+    --z-modal: 1000;
+    --z-toast: 1500;
+}
+
+/* ═══════════════════════════════════════
+   LIGHT THEME (UNIMED Light)
+   ═══════════════════════════════════════ */
+[data-theme="light"] {
+    --bg-primary: #FAFAFA;
+    --bg-secondary: #F0F4F8;
+    --bg-tertiary: #FFFFFF;
+    --bg-card: rgba(255, 255, 255, 0.75);
+    --bg-card-hover: rgba(255, 255, 255, 0.90);
+    --bg-glass: rgba(255, 255, 255, 0.55);
+    --bg-glass-border: rgba(7, 66, 125, 0.12);
+    --bg-topbar: rgba(255, 255, 255, 0.80);
+    --bg-input: rgba(240, 244, 248, 0.8);
+    --bg-input-focus: rgba(255, 255, 255, 1);
+
+    --text-primary: #0F172A;
+    --text-secondary: #334155;
+    --text-tertiary: #64748B;
+    --text-muted: #94A3B8;
+    --text-inverse: #FFFFFF;
+    --text-brand: #07427D;
+
+    --border-primary: rgba(7, 66, 125, 0.15);
+    --border-secondary: rgba(15, 23, 42, 0.08);
+    --border-focus: var(--brand-primary);
+
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.03);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.06), 0 2px 4px rgba(0, 0, 0, 0.04);
+    --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.08), 0 4px 12px rgba(0, 0, 0, 0.04);
+    --shadow-xl: 0 20px 60px rgba(0, 0, 0, 0.10), 0 8px 24px rgba(0, 0, 0, 0.06);
+    --shadow-glow: 0 0 40px rgba(7, 66, 125, 0.15);
+
+    --orb-1: rgba(7, 66, 125, 0.12);
+    --orb-2: rgba(122, 184, 225, 0.10);
+    --orb-3: rgba(166, 193, 211, 0.08);
+
+    --scrollbar-track: rgba(0, 0, 0, 0.03);
+    --scrollbar-thumb: rgba(7, 66, 125, 0.2);
+}
+
+/* ═══════════════════════════════════════
+   DARK THEME (UNIMED Dark)
+   ═══════════════════════════════════════ */
+[data-theme="dark"] {
+    --bg-primary: #0A1628;
+    --bg-secondary: #0F1E33;
+    --bg-tertiary: #1A2D47;
+    --bg-card: rgba(15, 30, 51, 0.60);
+    --bg-card-hover: rgba(15, 30, 51, 0.80);
+    --bg-glass: rgba(10, 22, 40, 0.55);
+    --bg-glass-border: rgba(122, 184, 225, 0.18);
+    --bg-topbar: rgba(10, 22, 40, 0.85);
+    --bg-input: rgba(26, 45, 71, 0.6);
+    --bg-input-focus: rgba(26, 45, 71, 0.9);
+
+    --text-primary: #F1F5F9;
+    --text-secondary: #CBD5E1;
+    --text-tertiary: #94A3B8;
+    --text-muted: #64748B;
+    --text-inverse: #0F172A;
+    --text-brand: #7AB8E1;
+
+    --border-primary: rgba(122, 184, 225, 0.20);
+    --border-secondary: rgba(241, 245, 249, 0.06);
+    --border-focus: var(--brand-primary-light);
+
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.20), 0 1px 2px rgba(0, 0, 0, 0.15);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.25), 0 2px 4px rgba(0, 0, 0, 0.18);
+    --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.30), 0 4px 12px rgba(0, 0, 0, 0.20);
+    --shadow-xl: 0 20px 60px rgba(0, 0, 0, 0.40), 0 8px 24px rgba(0, 0, 0, 0.25);
+    --shadow-glow: 0 0 60px rgba(7, 66, 125, 0.25);
+
+    --orb-1: rgba(7, 66, 125, 0.10);
+    --orb-2: rgba(122, 184, 225, 0.07);
+    --orb-3: rgba(166, 193, 211, 0.05);
+
+    --scrollbar-track: rgba(255, 255, 255, 0.02);
+    --scrollbar-thumb: rgba(122, 184, 225, 0.3);
+}
+
+/* ═══════════════════════════════════════
+   RTL Overrides
+   ═══════════════════════════════════════ */
+[dir="rtl"] {
+    --font-primary: var(--font-arabic);
+}

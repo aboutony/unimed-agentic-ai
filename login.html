@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr" data-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="UNIMED Agentic AI — Secure Login Gateway for Document Integration Suite">
+    <title>UNIMED — Secure Login</title>
+    <link rel="icon" href="assets/unimed-logo-official.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="css/variables.css">
+    <link rel="stylesheet" href="css/login.css">
+    <style>
+        *,
+        *::before,
+        *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            -webkit-font-smoothing: antialiased;
+        }
+
+        body {
+            font-family: var(--font-primary);
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Theme Toggle -->
+    <button class="login-theme-toggle" id="themeToggle" aria-label="Toggle theme">☀️</button>
+
+    <div class="login-universe" id="loginUniverse">
+        <!-- Animated Background Orbs -->
+        <div class="login-orb login-orb--1"></div>
+        <div class="login-orb login-orb--2"></div>
+        <div class="login-orb login-orb--3"></div>
+
+        <!-- Login Card -->
+        <div class="login-card" data-domain="HEALTHCARE">
+            <div class="login-brand">
+                <img src="assets/unimed-logo-official.svg" alt="UNIMED" class="login-logo">
+                <h1 class="login-title"><span data-i18n="loginTitle">UNIMED</span></h1>
+                <p class="login-subtitle" data-i18n="loginSubtitle">Agentic AI Document Suite</p>
+            </div>
+
+            <form class="login-form" id="loginForm" autocomplete="off">
+                <div class="form-group">
+                    <label class="form-label" for="loginEmail" data-i18n="emailLabel">Email / Username</label>
+                    <input class="form-input" type="text" id="loginEmail" placeholder="admin@unimed.com" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="loginPassword" data-i18n="passwordLabel">Password</label>
+                    <input class="form-input" type="password" id="loginPassword" placeholder="••••••••" required>
+                </div>
+
+                <p class="login-error" id="loginError" data-i18n-error></p>
+
+                <button class="login-btn" type="submit" id="loginBtn">
+                    <span data-i18n="loginBtn">Authenticate</span>
+                </button>
+            </form>
+
+            <div class="login-footer">
+                <p class="login-footer-text">
+                    <span data-i18n="domainLock">Sovereign Domain</span>
+                    <span class="domain-badge">🏥 HEALTHCARE</span>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/ThemeEngine.js"></script>
+    <script src="js/AuthGateway.js"></script>
+    <script>
+        // ── Initialize Theme ──
+        ThemeEngine.init();
+
+        document.getElementById('themeToggle').addEventListener('click', () => {
+            ThemeEngine.toggle();
+            document.getElementById('themeToggle').textContent = ThemeEngine.current() === 'dark' ? '☀️' : '🌙';
+        });
+
+        // Set initial icon
+        document.getElementById('themeToggle').textContent = ThemeEngine.current() === 'dark' ? '☀️' : '🌙';
+
+        // ── Login Handler ──
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('loginEmail').value.trim();
+            const password = document.getElementById('loginPassword').value;
+            const errorEl = document.getElementById('loginError');
+            const btn = document.getElementById('loginBtn');
+
+            errorEl.classList.remove('visible');
+            btn.disabled = true;
+            btn.querySelector('span').textContent = '⏳';
+
+            // Simulate auth delay for premium feel
+            await new Promise(r => setTimeout(r, 600));
+
+            const result = AuthGateway.authenticate(email, password);
+
+            if (result.success) {
+                // Story-Flow exit transition
+                const universe = document.getElementById('loginUniverse');
+                universe.classList.add('story-exit');
+
+                // Wait for animation to complete, then redirect
+                await new Promise(r => setTimeout(r, 750));
+                window.location.href = 'index.html';
+            } else {
+                errorEl.textContent = result.message;
+                errorEl.classList.add('visible');
+                btn.disabled = false;
+                btn.querySelector('span').textContent = 'Authenticate';
+
+                // Shake the card
+                const card = document.querySelector('.login-card');
+                card.style.animation = 'none';
+                card.offsetHeight; // trigger reflow
+                card.style.animation = 'shake 0.5s ease';
+            }
+        });
+    </script>
+
+    <style>
+        @keyframes shake {
+
+            0%,
+            100% {
+                transform: translateX(0);
+            }
+
+            20% {
+                transform: translateX(-8px);
+            }
+
+            40% {
+                transform: translateX(8px);
+            }
+
+            60% {
+                transform: translateX(-4px);
+            }
+
+            80% {
+                transform: translateX(4px);
+            }
+        }
+    </style>
+</body>
+
+</html>

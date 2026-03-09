@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr" data-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="UNIMED Agentic AI — Document Integration Suite for SAP Business One">
+    <title>UNIMED — Agentic AI Dashboard</title>
+    <link rel="icon" href="assets/unimed-logo-official.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="css/variables.css">
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/pipeline.css">
+    <link rel="stylesheet" href="css/uat.css">
+
+    <!-- CDN Dependencies: PDF.js + Tesseract.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.9.155/pdf.min.mjs" type="module"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.9.155/pdf.worker.min.mjs" type="module"></script>
+    <script>
+        // Load PDF.js as global (non-module fallback for our IIFE modules)
+        (async () => {
+            try {
+                const pdfjsModule = await import('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.9.155/pdf.min.mjs');
+                window.pdfjsLib = pdfjsModule;
+                pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.9.155/pdf.worker.min.mjs';
+                console.log('[CDN] PDF.js loaded');
+            } catch (e) {
+                console.warn('[CDN] PDF.js load failed:', e);
+            }
+        })();
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+</head>
+
+<body>
+    <!-- Background Orbs -->
+    <div class="bg-orbs" aria-hidden="true">
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+    </div>
+
+    <div class="app-universe" id="appUniverse">
+
+        <!-- ═══════ TOPBAR ═══════ -->
+        <header class="topbar" data-domain="HEALTHCARE">
+            <div class="topbar-brand">
+                <img src="assets/unimed-logo-official.svg" alt="UNIMED" class="topbar-logo">
+                <div>
+                    <div class="topbar-title"><span data-i18n="brandName">UNIMED</span></div>
+                </div>
+            </div>
+            <span class="topbar-divider"></span>
+            <span class="topbar-domain-badge" data-domain="HEALTHCARE">🏥 <span
+                    data-i18n="domainBadge">HEALTHCARE</span></span>
+
+            <div class="topbar-spacer"></div>
+
+            <div class="topbar-controls">
+                <!-- Language Toggle -->
+                <button class="topbar-btn lang-toggle" id="langToggle" aria-label="Toggle language"
+                    title="Toggle Language">
+                    EN
+                </button>
+
+                <!-- Theme Toggle -->
+                <button class="topbar-btn" id="themeToggle" aria-label="Toggle theme" title="Toggle Theme">
+                    ☀️
+                </button>
+
+                <!-- Settings Gear (SAP) -->
+                <button class="topbar-btn" id="settingsGear" aria-label="SAP Settings" title="Integration Settings">
+                    ⚙️
+                    <span class="sap-dot idle" id="sapDotTopbar"></span>
+                </button>
+
+                <!-- Logout -->
+                <button class="topbar-btn topbar-btn-logout" id="logoutBtn" aria-label="Logout" title="Logout">
+                    🚪
+                </button>
+            </div>
+        </header>
+
+        <!-- UAT Environment Lockdown Banner -->
+        <div class="uat-lockdown-banner" id="uatLockdownBanner" style="display:none;">
+            <span class="uat-lockdown-icon">🔒</span>
+            <span class="uat-lockdown-text">UAT SANDBOX — Master Data Frozen</span>
+            <span class="uat-lockdown-scope" id="uatLockdownScope">6 Customers · 5 Vendors · 10 Items</span>
+            <span class="uat-lockdown-threshold" id="uatLockdownThreshold">Fuzzy: 0.65</span>
+        </div>
+
+        <!-- ═══════ MAIN CONTENT ═══════ -->
+        <main class="main-content" data-domain="HEALTHCARE">
+
+            <!-- Welcome Hero -->
+            <section class="welcome-hero" data-domain="HEALTHCARE">
+                <div class="welcome-icon">🧬</div>
+                <h1 class="welcome-title" data-i18n="welcomeTitle">Agentic <span>AI</span> Command Center</h1>
+                <p class="welcome-desc" data-i18n="welcomeDesc">Intelligent document processing, automated SAP
+                    integration, and real-time analytics — purpose-built for healthcare operations.</p>
+            </section>
+
+            <!-- Dashboard Grid -->
+            <div class="dashboard-grid">
+
+                <!-- Card 1: Document Queue -->
+                <div class="glass-card" data-domain="HEALTHCARE">
+                    <div class="card-header">
+                        <h3 class="card-title" data-i18n="docQueueTitle">📄 Document Queue</h3>
+                        <span class="card-badge ai" data-i18n="badgeAI">AI Ready</span>
+                    </div>
+                    <div class="card-metric"><span class="currency" data-currency-symbol>SAR</span> <span
+                            data-i18n-currency="0">0.00</span></div>
+                    <p class="card-description" data-i18n="docQueueDesc">Pending invoices, purchase orders, and delivery
+                        notes awaiting AI extraction and SAP posting.</p>
+                </div>
+
+                <!-- Card 2: AI Processing -->
+                <div class="glass-card" data-domain="HEALTHCARE">
+                    <div class="card-header">
+                        <h3 class="card-title" data-i18n="aiProcessTitle">🤖 AI Processing</h3>
+                        <span class="card-badge pending" data-i18n="badgeStandby">Standby</span>
+                    </div>
+                    <ul class="activity-list">
+                        <li class="activity-item">
+                            <span class="activity-dot info"></span>
+                            <span class="activity-text" data-i18n="aiItem1">OCR Engine — Idle</span>
+                            <span class="activity-time" data-i18n="aiTime1">—</span>
+                        </li>
+                        <li class="activity-item">
+                            <span class="activity-dot info"></span>
+                            <span class="activity-text" data-i18n="aiItem2">NLP Classifier — Standby</span>
+                            <span class="activity-time" data-i18n="aiTime2">—</span>
+                        </li>
+                        <li class="activity-item">
+                            <span class="activity-dot info"></span>
+                            <span class="activity-text" data-i18n="aiItem3">Field Extraction — Awaiting</span>
+                            <span class="activity-time" data-i18n="aiTime3">—</span>
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- Card 3: SAP Integration Status -->
+                <div class="glass-card" data-domain="HEALTHCARE">
+                    <div class="card-header">
+                        <h3 class="card-title" data-i18n="sapStatusTitle">🔷 SAP B1 Integration</h3>
+                        <span class="card-badge pending" id="sapCardBadge"
+                            data-i18n="badgeDisconnected">Disconnected</span>
+                    </div>
+                    <ul class="activity-list">
+                        <li class="activity-item">
+                            <span class="activity-dot warning" id="sapServiceDot"></span>
+                            <span class="activity-text" data-i18n="sapItem1">Service Layer v10.0</span>
+                            <span class="activity-time" id="sapServiceStatus" data-i18n="sapStatus1">Not
+                                configured</span>
+                        </li>
+                        <li class="activity-item">
+                            <span class="activity-dot warning"></span>
+                            <span class="activity-text" data-i18n="sapItem2">DI API Adapter</span>
+                            <span class="activity-time" data-i18n="sapStatus2">Pending setup</span>
+                        </li>
+                        <li class="activity-item">
+                            <span class="activity-dot warning"></span>
+                            <span class="activity-text" data-i18n="sapItem3">Document Posting</span>
+                            <span class="activity-time" data-i18n="sapStatus3">Inactive</span>
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- Card 4: Compliance & Audit -->
+                <div class="glass-card" data-domain="HEALTHCARE">
+                    <div class="card-header">
+                        <h3 class="card-title" data-i18n="complianceTitle">🛡️ Compliance Engine</h3>
+                        <span class="card-badge ready" data-i18n="badgeArmed">Armed</span>
+                    </div>
+                    <ul class="activity-list">
+                        <li class="activity-item">
+                            <span class="activity-dot success"></span>
+                            <span class="activity-text" data-i18n="compItem1">SFDA Regulatory Gate</span>
+                            <span class="activity-time" data-i18n="compStatus1">Active</span>
+                        </li>
+                        <li class="activity-item">
+                            <span class="activity-dot success"></span>
+                            <span class="activity-text" data-i18n="compItem2">SABER Conformity</span>
+                            <span class="activity-time" data-i18n="compStatus2">Armed</span>
+                        </li>
+                        <li class="activity-item">
+                            <span class="activity-dot success"></span>
+                            <span class="activity-text" data-i18n="compItem3">SHA-256 Audit Chain</span>
+                            <span class="activity-time" data-i18n="compStatus3">Initialized</span>
+                        </li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <!-- ═══════ PHASE 2: DOCUMENT PIPELINE ═══════ -->
+
+            <!-- Upload Zone -->
+            <section class="pipeline-section" id="uploadSection">
+                <div class="pipeline-section-header">
+                    <span class="pipeline-section-icon">📤</span>
+                    <div>
+                        <div class="pipeline-section-title" data-i18n="uploadSectionTitle">Document Ingestion</div>
+                        <div class="pipeline-section-subtitle" data-i18n="uploadSectionSub">Upload PDF documents for
+                            AI-powered extraction and SAP integration</div>
+                    </div>
+                </div>
+
+                <div class="upload-zone" id="uploadZone">
+                    <input type="file" id="uploadInput" accept=".pdf" hidden>
+                    <div class="upload-zone-icon" id="uploadIcon">📄</div>
+                    <div class="upload-zone-title" id="uploadTitle">Drop your document here</div>
+                    <div class="upload-zone-subtitle" id="uploadSubtitle">Sales Orders, Purchase Orders, and Delivery
+                        Notes</div>
+                    <button class="upload-zone-btn" type="button">📁 Browse Files</button>
+                    <div class="upload-zone-formats">Supported: PDF · Max 25MB · Invoices excluded from this phase</div>
+
+                    <!-- File Preview (shown after upload) -->
+                    <div class="upload-file-preview" id="filePreview">
+                        <div class="file-preview-icon">📄</div>
+                        <div class="file-preview-info">
+                            <div class="file-preview-name" id="filePreviewName">—</div>
+                            <div class="file-preview-meta" id="filePreviewMeta">—</div>
+                            <div class="file-preview-hash" id="filePreviewHash">—</div>
+                        </div>
+                        <div class="file-preview-actions">
+                            <button class="file-preview-process" id="processBtn" type="button">🚀 Process
+                                Document</button>
+                            <button class="file-preview-clear" id="clearBtn" type="button">✕ Clear</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Processing Pipeline -->
+            <section class="pipeline-section" id="pipelineSection">
+                <div class="pipeline-section-header">
+                    <span class="pipeline-section-icon">⚡</span>
+                    <div>
+                        <div class="pipeline-section-title" data-i18n="pipelineTitle">Processing Story</div>
+                        <div class="pipeline-section-subtitle" data-i18n="pipelineSub">Real-time document journey
+                            through the Agentic AI pipeline</div>
+                    </div>
+                </div>
+
+                <div class="pipeline-track" id="pipelineTrack">
+                    <div class="pipeline-progress-bar" id="pipelineProgressBar"></div>
+
+                    <div class="pipeline-step pending" data-step="0">
+                        <div class="pipeline-step-node">📤</div>
+                        <div class="pipeline-step-label">Ingestion</div>
+                        <div class="pipeline-step-time"></div>
+                    </div>
+
+                    <div class="pipeline-step pending" data-step="1">
+                        <div class="pipeline-step-node">🔍</div>
+                        <div class="pipeline-step-label">Agentic Classification</div>
+                        <div class="pipeline-step-time"></div>
+                    </div>
+
+                    <div class="pipeline-step pending" data-step="2">
+                        <div class="pipeline-step-node">✅</div>
+                        <div class="pipeline-step-label">Validation</div>
+                        <div class="pipeline-step-time"></div>
+                    </div>
+
+                    <div class="pipeline-step pending" data-step="3">
+                        <div class="pipeline-step-node">📦</div>
+                        <div class="pipeline-step-label">SAP Ready</div>
+                        <div class="pipeline-step-time"></div>
+                    </div>
+                </div>
+
+                <!-- Extraction Preview -->
+                <div class="extraction-preview" id="extractionPreview">
+                    <div class="extraction-header">
+                        <div class="extraction-doctype">
+                            <span class="extraction-doctype-badge" id="extractionDoctypeBadge">—</span>
+                        </div>
+                        <span class="extraction-confidence" id="extractionConfidence">—</span>
+                    </div>
+                    <div class="extraction-fields" id="extractionFields"></div>
+                    <div class="extraction-table-wrapper">
+                        <table class="extraction-table">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Item Code</th>
+                                    <th>Description</th>
+                                    <th>Qty</th>
+                                    <th>Unit Price</th>
+                                    <th>Total</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="extractionTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Review Queue -->
+            <section class="pipeline-section">
+                <div class="review-queue" id="reviewQueue">
+                    <div class="pipeline-section-header">
+                        <span class="pipeline-section-icon">⚠️</span>
+                        <div>
+                            <div class="pipeline-section-title" data-i18n="reviewTitle">Review Queue</div>
+                            <div class="pipeline-section-subtitle" data-i18n="reviewSub">Items requiring human
+                                verification before SAP posting</div>
+                        </div>
+                    </div>
+                    <div id="reviewCards"></div>
+                </div>
+            </section>
+
+            <!-- SAP Ready Panel -->
+            <div class="sap-ready-panel" id="sapReadyPanel">
+                <div class="sap-ready-header">
+                    <span class="sap-ready-title">📦 SAP B1 Draft Payload</span>
+                    <span class="sap-ready-target" id="sapReadyTarget">—</span>
+                </div>
+                <pre class="sap-ready-payload" id="sapReadyPayload"></pre>
+                <div class="sap-ready-actions">
+                    <button class="sap-post-btn" id="sapPostBtn" type="button">📦 Post as Draft to SAP B1</button>
+                </div>
+            </div>
+
+            <!-- SAP Success Card -->
+            <div class="sap-success-card" id="sapSuccessCard">
+                <div class="success-header">
+                    <div class="success-checkmark">✅</div>
+                    <div class="success-title-group">
+                        <h3 class="success-title" id="successTitle">Draft Created Successfully</h3>
+                        <p class="success-subtitle" id="successSubtitle">Your document has been posted to SAP B1 as a
+                            draft</p>
+                    </div>
+                </div>
+                <div class="success-details" id="successDetails"></div>
+                <div class="success-attachment" id="successAttachment" style="display: none;">
+                    <span class="success-attachment-icon">📎</span>
+                    <div class="success-attachment-info" id="successAttachmentInfo"></div>
+                </div>
+                <div class="success-actions">
+                    <button class="success-new-btn" id="successNewBtn" type="button">🚀 Process New Document</button>
+                </div>
+            </div>
+
+            <!-- Audit Timeline -->
+            <section class="pipeline-section" id="auditSection">
+                <div class="pipeline-section-header">
+                    <span class="pipeline-section-icon">🔐</span>
+                    <div>
+                        <div class="pipeline-section-title" data-i18n="auditTitle">SHA-256 Audit Chain</div>
+                        <div class="pipeline-section-subtitle" data-i18n="auditSub">Tamper-proof record of every
+                            document lifecycle event</div>
+                    </div>
+                </div>
+                <div class="audit-timeline" id="auditTimeline"></div>
+            </section>
+
+        </main>
+
+        <!-- ═══════ SAP SETTINGS PANEL ═══════ -->
+        <div class="settings-overlay" id="settingsOverlay"></div>
+        <aside class="settings-panel" id="settingsPanel" data-domain="HEALTHCARE">
+            <div class="settings-panel-header">
+                <h2 class="settings-panel-title" data-i18n="settingsTitle">⚙️ Integration Hub</h2>
+                <button class="settings-close" id="settingsClose" aria-label="Close settings">✕</button>
+            </div>
+            <div class="settings-panel-body">
+                <!-- SAP B1 Section -->
+                <div>
+                    <div class="sap-section-title">
+                        <span class="icon">🔷</span>
+                        <span data-i18n="sapSectionTitle">SAP Business One v10.0</span>
+                    </div>
+                    <div class="sap-form">
+                        <div class="form-group">
+                            <label class="form-label" for="sapUrl" data-i18n="sapUrlLabel">Service Layer URL</label>
+                            <input class="form-input" type="url" id="sapUrl"
+                                placeholder="https://sap-server:50000/b1s/v1/">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="sapCompanyDB" data-i18n="sapDbLabel">Company Database</label>
+                            <input class="form-input" type="text" id="sapCompanyDB" placeholder="UNIMED_PROD">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="sapUser" data-i18n="sapUserLabel">SAP Username</label>
+                            <input class="form-input" type="text" id="sapUser" placeholder="GRPO_SERVICE">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="sapPassword" data-i18n="sapPassLabel">SAP Password</label>
+                            <input class="form-input" type="password" id="sapPassword" placeholder="••••••••">
+                        </div>
+                    </div>
+
+                    <!-- Handshake Status -->
+                    <div class="handshake-status" id="handshakeStatus">
+                        <span class="handshake-indicator idle" id="handshakeIndicator"></span>
+                        <div>
+                            <div class="handshake-label" id="handshakeLabel" data-i18n="handshakeIdle">Idle — Not
+                                Connected</div>
+                            <div class="handshake-sublabel" id="handshakeSub" data-i18n="handshakeSub">Configure
+                                credentials and test connection</div>
+                        </div>
+                    </div>
+
+                    <button class="sap-test-btn" id="sapTestBtn" data-i18n="testConnection"
+                        style="margin-top: var(--space-lg);">
+                        🤝 Test Handshake
+                    </button>
+                </div>
+            </div>
+
+            <div class="sap-version">
+                <p class="sap-version-text">
+                    <span data-i18n="sapVersion">Targeting</span> <strong>SAP Business One v10.0</strong> · <span
+                        data-i18n="sapProtocol">Service Layer (REST)</span>
+                </p>
+            </div>
+        </aside>
+
+    </div>
+
+    <!-- ═══════ SCRIPTS ═══════ -->
+    <script src="js/ThemeEngine.js"></script>
+    <script src="js/AuthGateway.js"></script>
+    <script src="js/TranslationModule.js"></script>
+    <script src="js/DomainLock.js"></script>
+    <script src="js/SAPHandshake.js"></script>
+    <script src="js/AuditChain.js"></script>
+    <script src="js/ExtractionEngine.js"></script>
+    <script src="js/DocumentClassifier.js"></script>
+    <script src="js/FieldExtractor.js"></script>
+    <script src="js/ValidationAgents.js"></script>
+    <script src="js/SAPServiceLayer.js"></script>
+    <script src="js/AttachmentManager.js"></script>
+    <script src="js/PipelineController.js"></script>
+    <script src="js/UATConsole.js"></script>
+    <script src="js/FounderDemo.js"></script>
+    <script src="js/App.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,383 @@
+/* ═══════════════════════════════════════════════════════════
+   UNIMED AGENTIC AI — Login Gateway
+   Official Brand: United Medical Industries Co. Ltd.
+   ═══════════════════════════════════════════════════════════ */
+
+.login-universe {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-primary);
+    overflow: hidden;
+    font-family: var(--font-primary);
+    transition: background var(--transition-smooth);
+}
+
+/* ── Animated Orbs ── */
+.login-orb {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(80px);
+    pointer-events: none;
+    will-change: transform;
+}
+
+.login-orb--1 {
+    width: 500px;
+    height: 500px;
+    background: var(--orb-1);
+    top: -10%;
+    right: -5%;
+    animation: orbFloat1 18s ease-in-out infinite;
+}
+
+.login-orb--2 {
+    width: 400px;
+    height: 400px;
+    background: var(--orb-2);
+    bottom: -15%;
+    left: -8%;
+    animation: orbFloat2 22s ease-in-out infinite;
+}
+
+.login-orb--3 {
+    width: 300px;
+    height: 300px;
+    background: var(--orb-3);
+    top: 40%;
+    left: 50%;
+    animation: orbFloat3 15s ease-in-out infinite;
+}
+
+@keyframes orbFloat1 {
+
+    0%,
+    100% {
+        transform: translate(0, 0) scale(1);
+    }
+
+    33% {
+        transform: translate(-60px, 40px) scale(1.1);
+    }
+
+    66% {
+        transform: translate(30px, -30px) scale(0.95);
+    }
+}
+
+@keyframes orbFloat2 {
+
+    0%,
+    100% {
+        transform: translate(0, 0) scale(1);
+    }
+
+    33% {
+        transform: translate(50px, -35px) scale(1.08);
+    }
+
+    66% {
+        transform: translate(-40px, 25px) scale(0.92);
+    }
+}
+
+@keyframes orbFloat3 {
+
+    0%,
+    100% {
+        transform: translate(0, 0) scale(1);
+    }
+
+    50% {
+        transform: translate(-30px, -50px) scale(1.15);
+    }
+}
+
+/* ── Login Card ── */
+.login-card {
+    position: relative;
+    z-index: var(--z-base);
+    width: 100%;
+    max-width: 440px;
+    padding: var(--space-3xl) var(--space-2xl);
+    background: var(--bg-glass);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--bg-glass-border);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-xl);
+    animation: cardAppear 1s var(--transition-story) both;
+}
+
+@keyframes cardAppear {
+    from {
+        opacity: 0;
+        transform: translateY(30px) scale(0.96);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* ── Brand Header ── */
+.login-brand {
+    text-align: center;
+    margin-bottom: var(--space-2xl);
+}
+
+.login-logo {
+    width: 200px;
+    height: auto;
+    margin: 0 auto var(--space-lg);
+    animation: logoPulse 3s ease-in-out infinite;
+}
+
+@keyframes logoPulse {
+
+    0%,
+    100% {
+        filter: drop-shadow(0 0 12px rgba(7, 66, 125, 0.3));
+    }
+
+    50% {
+        filter: drop-shadow(0 0 24px rgba(7, 66, 125, 0.5));
+    }
+}
+
+.login-title {
+    font-size: 1.75rem;
+    font-weight: 800;
+    color: var(--text-primary);
+    letter-spacing: -0.03em;
+    margin-bottom: var(--space-xs);
+}
+
+.login-title span {
+    background: linear-gradient(135deg, var(--brand-teal), var(--brand-emerald));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.login-subtitle {
+    font-size: 0.875rem;
+    color: var(--text-tertiary);
+    font-weight: 400;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+/* ── Form Fields ── */
+.login-form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-lg);
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+}
+
+.form-label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.form-input {
+    width: 100%;
+    padding: 14px 18px;
+    background: var(--bg-input);
+    border: 1.5px solid var(--border-secondary);
+    border-radius: var(--radius-md);
+    font-family: var(--font-primary);
+    font-size: 0.95rem;
+    color: var(--text-primary);
+    outline: none;
+    transition: all var(--transition-base);
+    box-sizing: border-box;
+}
+
+.form-input::placeholder {
+    color: var(--text-muted);
+}
+
+.form-input:focus {
+    background: var(--bg-input-focus);
+    border-color: var(--border-focus);
+    box-shadow: 0 0 0 3px rgba(7, 66, 125, 0.12);
+}
+
+.form-input.error {
+    border-color: var(--health-critical);
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.12);
+}
+
+/* ── Submit Button ── */
+.login-btn {
+    position: relative;
+    width: 100%;
+    padding: 16px;
+    margin-top: var(--space-sm);
+    background: linear-gradient(135deg, var(--brand-teal), var(--brand-emerald));
+    color: #FFFFFF;
+    font-family: var(--font-primary);
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    border: none;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    overflow: hidden;
+    transition: all var(--transition-base);
+}
+
+.login-btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, var(--brand-teal-dark), var(--brand-emerald-deep));
+    opacity: 0;
+    transition: opacity var(--transition-base);
+}
+
+.login-btn:hover::before {
+    opacity: 1;
+}
+
+.login-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(7, 66, 125, 0.35);
+}
+
+.login-btn:active {
+    transform: translateY(0);
+}
+
+.login-btn span {
+    position: relative;
+    z-index: 1;
+}
+
+.login-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* ── Error Message ── */
+.login-error {
+    text-align: center;
+    font-size: 0.85rem;
+    color: var(--health-critical);
+    font-weight: 500;
+    min-height: 1.2em;
+    opacity: 0;
+    transform: translateY(-4px);
+    transition: all var(--transition-base);
+}
+
+.login-error.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* ── Footer ── */
+.login-footer {
+    text-align: center;
+    margin-top: var(--space-xl);
+    padding-top: var(--space-lg);
+    border-top: 1px solid var(--border-secondary);
+}
+
+.login-footer-text {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    letter-spacing: 0.04em;
+}
+
+.login-footer-text .domain-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 10px;
+    margin-left: 6px;
+    background: rgba(7, 66, 125, 0.1);
+    border: 1px solid rgba(7, 66, 125, 0.2);
+    border-radius: var(--radius-full);
+    color: var(--text-brand);
+    font-weight: 600;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+}
+
+/* ── Theme Toggle on Login ── */
+.login-theme-toggle {
+    position: fixed;
+    top: var(--space-lg);
+    right: var(--space-lg);
+    z-index: var(--z-sticky);
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-glass);
+    backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--bg-glass-border);
+    border-radius: var(--radius-full);
+    cursor: pointer;
+    font-size: 1.2rem;
+    color: var(--text-secondary);
+    transition: all var(--transition-base);
+}
+
+[dir="rtl"] .login-theme-toggle {
+    right: auto;
+    left: var(--space-lg);
+}
+
+.login-theme-toggle:hover {
+    background: var(--bg-card-hover);
+    transform: scale(1.08);
+    box-shadow: var(--shadow-md);
+}
+
+/* ── Story-Flow Fade-Out ── */
+.login-universe.story-exit {
+    animation: storyFlowExit 800ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes storyFlowExit {
+    0% {
+        opacity: 1;
+        filter: blur(0);
+        transform: scale(1);
+    }
+
+    100% {
+        opacity: 0;
+        filter: blur(8px);
+        transform: scale(1.04);
+    }
+}
+
+/* ── Responsive ── */
+@media (max-width: 520px) {
+    .login-card {
+        margin: var(--space-md);
+        padding: var(--space-xl) var(--space-lg);
+    }
+
+    .login-title {
+        font-size: 1.4rem;
+    }
+}
